@@ -1,0 +1,243 @@
+openapi: 3.1.0
+info:
+  title: Tgmeng News Skill Search API
+  version: 1.1.0
+  description: Search Tgmeng in-site news and hotspot data by license, keyword array, strict search mode, and optional result limit.
+servers:
+  - url: https://trendapi.tgmeng.com
+    description: Fixed production API server
+paths:
+  /api/skill/search:
+    post:
+      operationId: searchTgmengNews
+      summary: Search Tgmeng news and hotspot data
+      description: |
+        Search current, today, or historical Tgmeng in-site news and hotspot records.
+        REALTIME requires SEARCH permission. TODAY and HISTORY require SKILLHISTORY permission.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SkillSearchRequest'
+            examples:
+              realtime:
+                summary: Realtime search
+                value:
+                  license: USER_LICENSE_CODE
+                  keywords:
+                    - AI
+                    - OpenAI
+                  mode: REALTIME
+                  limit: 50
+              today:
+                summary: Today search without limit
+                value:
+                  license: USER_LICENSE_CODE
+                  keywords:
+                    - 机器人
+                  mode: TODAY
+                  limit: 0
+              history:
+                summary: Historical search
+                value:
+                  license: USER_LICENSE_CODE
+                  keywords:
+                    - OpenAI
+                  mode: HISTORY
+                  limit: 20
+      responses:
+        '200':
+          description: Standard Tgmeng response envelope. Business errors may also return HTTP 200; inspect code and message.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SkillSearchResponse'
+              examples:
+                success:
+                  summary: Successful result
+                  value:
+                    code: 200
+                    message: 请求成功
+                    data:
+                      query:
+                        mode: REALTIME
+                        keywords:
+                          - AI
+                          - OpenAI
+                        permission: SEARCH
+                        limit: 50
+                      summary:
+                        total: 120
+                        returned: 50
+                        truncated: true
+                      items:
+                        - title: OpenAI releases a new model
+                          url: https://example.com/news/openai-model
+                          source: Example News
+                          category: AI
+                          rootCategory: 科技
+                          publishedAt: '2026-05-03 01:00:00'
+                          rank: 1
+                          simHash: 123456789
+                invalidMode:
+                  summary: Invalid mode
+                  value:
+                    code: 666
+                    message: 参数mode不支持，请传[REALTIME, TODAY, HISTORY]
+                    data: null
+                invalidLimit:
+                  summary: Invalid limit
+                  value:
+                    code: 666
+                    message: limit must be greater than or equal to 0
+                    data: null
+                invalidLimitType:
+                  summary: Invalid limit type
+                  value:
+                    code: 666
+                    message: limit must be integer
+                    data: null
+components:
+  schemas:
+    SkillSearchMode:
+      type: string
+      description: Search time scope. Values are case-sensitive and must be uppercase English enum names.
+      enum:
+        - REALTIME
+        - TODAY
+        - HISTORY
+    SkillSearchRequest:
+      type: object
+      additionalProperties: false
+      required:
+        - license
+        - keywords
+        - mode
+      properties:
+        license:
+          type: string
+          minLength: 1
+          description: Tgmeng universal license code (糖果梦通用密钥). If absent, obtain one at https://wechat.tgmeng.com. Must not be logged or exposed.
+        keywords:
+          type: array
+          description: Keyword list for OR-style fuzzy title matching. HISTORY requires at least one non-blank item.
+          items:
+            type: string
+        mode:
+          $ref: '#/components/schemas/SkillSearchMode'
+        limit:
+          type:
+            - integer
+            - 'null'
+          minimum: 0
+          description: Maximum number of returned items. null, omitted, or 0 means no limit.
+    SkillSearchResponse:
+      type: object
+      required:
+        - code
+        - message
+        - data
+      properties:
+        code:
+          type: integer
+          description: Business status code. 200 means success.
+        message:
+          type: string
+          description: Human-readable result or error message.
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/SkillSearchData'
+            - type: 'null'
+    SkillSearchData:
+      type: object
+      required:
+        - query
+        - summary
+        - items
+      properties:
+        query:
+          $ref: '#/components/schemas/SkillSearchQuery'
+        summary:
+          $ref: '#/components/schemas/SkillSearchSummary'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SkillSearchItem'
+    SkillSearchQuery:
+      type: object
+      properties:
+        mode:
+          $ref: '#/components/schemas/SkillSearchMode'
+        keywords:
+          type: array
+          items:
+            type: string
+        permission:
+          type: string
+          enum:
+            - SEARCH
+            - SKILLHISTORY
+        limit:
+          type:
+            - integer
+            - 'null'
+    SkillSearchSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Total matched items before limit is applied.
+        returned:
+          type: integer
+          description: Number of items returned after limit is applied.
+        truncated:
+          type: boolean
+          description: true when limit was applied and not all matched items were returned.
+    SkillSearchItem:
+      type: object
+      additionalProperties: true
+      properties:
+        title:
+          type:
+            - string
+            - 'null'
+          description: Hotspot or news title.
+        url:
+          type:
+            - string
+            - 'null'
+          description: Source URL when available.
+        source:
+          type:
+            - string
+            - 'null'
+          description: Source platform name.
+        category:
+          type:
+            - string
+            - 'null'
+          description: Platform category.
+        rootCategory:
+          type:
+            - string
+            - 'null'
+          description: Root platform category.
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          description: Data update time in yyyy-MM-dd HH:mm:ss when available.
+        rank:
+          type:
+            - integer
+            - 'null'
+          description: Source ranking order when available.
+        simHash:
+          type:
+            - integer
+            - 'null'
+          format: int64
+          description: Similarity hash used by historical data when available.
+
+

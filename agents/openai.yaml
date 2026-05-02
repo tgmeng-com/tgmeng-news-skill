@@ -1,0 +1,6 @@
+interface:
+  display_name: "Tgmeng News Search"
+  short_description: "Search Tgmeng realtime and historical hotspots"
+  default_prompt: "Use $tgmeng-news-skill to search Tgmeng news and hotspot data."
+policy:
+  allow_implicit_invocation: true
