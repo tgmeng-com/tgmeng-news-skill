@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Tgmeng News Skill Search API
-  version: 1.1.0
-  description: Search Tgmeng in-site news and hotspot data by license, keyword array, strict search mode, and optional result limit.
+  version: 1.2.0
+  description: Search Tgmeng in-site news and hotspot data by license, keyword array, strict search mode, optional time window, and optional result limit.
 servers:
   - url: https://trendapi.tgmeng.com
     description: Fixed production API server
@@ -37,6 +37,8 @@ paths:
                   keywords:
                     - 机器人
                   mode: TODAY
+                  startTime: '2026-05-05 00:00:00'
+                  endTime: '2026-05-05 12:00:00'
                   limit: 0
               history:
                 summary: Historical search
@@ -45,6 +47,8 @@ paths:
                   keywords:
                     - OpenAI
                   mode: HISTORY
+                  startTime: '2026-04-01'
+                  endTime: '2026-04-30'
                   limit: 20
       responses:
         '200':
@@ -67,6 +71,8 @@ paths:
                           - OpenAI
                         permission: SEARCH
                         limit: 50
+                        startTime: null
+                        endTime: null
                       summary:
                         total: 120
                         returned: 50
@@ -132,6 +138,22 @@ components:
             - 'null'
           minimum: 0
           description: Maximum number of returned items. null, omitted, or 0 means no limit.
+        startTime:
+          type:
+            - string
+            - 'null'
+          description: Optional inclusive time window start for TODAY and HISTORY. Ignored for REALTIME. Accepts yyyy-MM-dd HH:mm:ss or yyyy-MM-dd; date-only values are normalized to 00:00:00.
+          examples:
+            - '2026-05-05 00:00:00'
+            - '2026-05-05'
+        endTime:
+          type:
+            - string
+            - 'null'
+          description: Optional inclusive time window end for TODAY and HISTORY. Ignored for REALTIME. Accepts yyyy-MM-dd HH:mm:ss or yyyy-MM-dd; date-only values are normalized to 23:59:59.
+          examples:
+            - '2026-05-05 23:59:59'
+            - '2026-05-05'
     SkillSearchResponse:
       type: object
       required:
@@ -182,6 +204,16 @@ components:
           type:
             - integer
             - 'null'
+        startTime:
+          type:
+            - string
+            - 'null'
+          description: Normalized time window start used by the query, or null.
+        endTime:
+          type:
+            - string
+            - 'null'
+          description: Normalized time window end used by the query, or null.
     SkillSearchSummary:
       type: object
       properties:

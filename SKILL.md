@@ -1,6 +1,6 @@
 ---
 name: tgmeng-news-skill
-description: Search Tgmeng in-site news and hotspot data through the Tgmeng Skill Search API. Use when an agent needs to query current, today, or historical Tgmeng news/hotspot records with a user-provided license, keyword array, and strict mode enum for external assistants such as Longxia, Hemes, or other tool-calling agents.
+description: Search Tgmeng in-site news and hotspot data through the Tgmeng Skill Search API. Use when an agent needs to query current, today, or historical Tgmeng news/hotspot records with a user-provided license, keyword array, strict mode enum, optional non-realtime time window, and optional result limit for external assistants such as Longxia, Hemes, or other tool-calling agents.
 ---
 
 # Tgmeng News Skill
@@ -24,6 +24,8 @@ Send JSON with these business parameters:
   "license": "USER_LICENSE_CODE",
   "keywords": ["AI", "OpenAI"],
   "mode": "REALTIME",
+  "startTime": null,
+  "endTime": null,
   "limit": 50
 }
 ```
@@ -33,15 +35,19 @@ Parameter contract:
 - `license`: string. Required. Tgmeng universal license code (糖果梦通用密钥). If the user does not have one, direct them to https://wechat.tgmeng.com to obtain it. Do not log, expose, or hard-code it.
 - `keywords`: string array. Required by schema. Empty arrays are allowed for `REALTIME` and `TODAY`; `HISTORY` requires at least one non-blank keyword.
 - `mode`: enum string. Required. Must be exactly one of `REALTIME`, `TODAY`, or `HISTORY`.
+- `startTime`: string or null. Optional. Inclusive time window start for `TODAY` and `HISTORY`; ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`. Date-only values are normalized to `00:00:00`.
+- `endTime`: string or null. Optional. Inclusive time window end for `TODAY` and `HISTORY`; ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`. Date-only values are normalized to `23:59:59`.
 - `limit`: integer or null. Optional. Maximum number of returned items. `null`, omitted, or `0` means no limit. Negative values are invalid.
 
 Mode behavior:
 
 - `REALTIME`: Query current in-memory hotspot cache. Requires `SEARCH` license permission.
-- `TODAY`: Query today's persisted hotspot history. Requires `SKILLHISTORY` license permission.
-- `HISTORY`: Query long-term persisted hotspot history. Requires `SKILLHISTORY` license permission and non-empty `keywords`.
+- `TODAY`: Query today's persisted hotspot history, optionally narrowed by `startTime` and `endTime`. Requires `SKILLHISTORY` license permission.
+- `HISTORY`: Query long-term persisted hotspot history, optionally narrowed by `startTime` and `endTime`. Requires `SKILLHISTORY` license permission and non-empty `keywords`.
 
 Keyword matching is OR-style fuzzy title matching: an item is returned when its title contains any keyword.
+
+For non-realtime modes, if only `startTime` is provided, the API searches from that time to now. If only `endTime` is provided, the API uses the mode's default start time and the provided end time. `startTime` must be before or equal to `endTime`.
 
 ## Response Shape
 
@@ -56,7 +62,9 @@ The API returns Tgmeng's standard envelope:
       "mode": "REALTIME",
       "keywords": ["AI", "OpenAI"],
       "permission": "SEARCH",
-      "limit": 50
+      "limit": 50,
+      "startTime": null,
+      "endTime": null
     },
     "summary": {
       "total": 120,
@@ -94,6 +102,9 @@ Common parameter errors:
 - `limit must be integer`: `limit` is not an integer.
 - `limit must be greater than or equal to 0`: `limit` is negative.
 - `历史模式 keywords empty error`: `mode` is `HISTORY` but `keywords` has no non-blank values.
+- `startTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd`: `startTime` format is invalid.
+- `endTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd`: `endTime` format is invalid.
+- `startTime must be before or equal to endTime`: Time window is reversed.
 
 Common authorization errors:
 
@@ -104,9 +115,10 @@ Common authorization errors:
 
 1. Validate request locally before calling the API: `license` non-blank, `keywords` is an array, and `mode` is a valid enum.
 2. For `HISTORY`, require at least one non-blank keyword.
-3. Call the endpoint with JSON content type.
-4. Read `code`, `message`, and `data` from the response envelope.
-5. Summarize results with source titles and URLs. Do not expose the license.
+3. For `TODAY` or `HISTORY`, pass `startTime` and `endTime` when the user asks for a precise period.
+4. Call the endpoint with JSON content type.
+5. Read `code`, `message`, and `data` from the response envelope.
+6. Summarize results with source titles and URLs. Do not expose the license.
 
 Server-side diagnostics may record request metadata such as IP address, User-Agent, request path, error message, masked license, and license hash. Do not include the full license in agent logs or user-facing output.
 

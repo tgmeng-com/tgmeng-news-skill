@@ -9,7 +9,7 @@
 当前 Skill 暴露的核心能力是：
 
 ```text
-按密钥、关键词数组、查询模式，搜索 Tgmeng 站内新闻和热点数据
+按密钥、关键词数组、查询模式和可选时间窗口，搜索 Tgmeng 站内新闻和热点数据
 ```
 
 底层实际调用接口：
@@ -48,6 +48,8 @@ POST https://trendapi.tgmeng.com/api/skill/search
   "license": "USER_LICENSE_CODE",
   "keywords": ["AI", "OpenAI"],
   "mode": "REALTIME",
+  "startTime": null,
+  "endTime": null,
   "limit": 50
 }
 ```
@@ -59,6 +61,8 @@ POST https://trendapi.tgmeng.com/api/skill/search
 | `license` | string | 是 | 糖果梦通用密钥。由调用方传入，Skill 内不保存、不写死。没有密钥时，可前往 `https://wechat.tgmeng.com` 获取。 |
 | `keywords` | string[] | 是 | 关键词数组，使用 OR 逻辑模糊匹配标题。 |
 | `mode` | enum | 是 | 查询模式，只能是 `REALTIME`、`TODAY`、`HISTORY`。 |
+| `startTime` | string/null | 否 | `TODAY` 和 `HISTORY` 的时间窗口开始时间，`REALTIME` 会忽略。支持 `yyyy-MM-dd HH:mm:ss` 或 `yyyy-MM-dd`，仅日期会补为当天 `00:00:00`。 |
+| `endTime` | string/null | 否 | `TODAY` 和 `HISTORY` 的时间窗口结束时间，`REALTIME` 会忽略。支持 `yyyy-MM-dd HH:mm:ss` 或 `yyyy-MM-dd`，仅日期会补为当天 `23:59:59`。 |
 | `limit` | integer/null | 否 | 最大返回条数。`null`、不传或 `0` 表示不限制；负数非法。 |
 
 ## mode 枚举
@@ -70,6 +74,15 @@ POST https://trendapi.tgmeng.com/api/skill/search
 | `HISTORY` | 历史数据 | 长期持久化历史数据 | `SKILLHISTORY` | 必须至少有一个非空关键词 |
 
 注意：`mode` 只支持英文大写枚举，不支持中文。
+
+## 时间窗口
+
+当 `mode` 不是 `REALTIME` 时，可以传 `startTime` 和 `endTime` 来缩小查询范围。这个能力适合用户明确想查某个小时、某半天、某几天内的热点时使用。
+
+- 只传 `startTime`：从开始时间查到当前时间。
+- 只传 `endTime`：使用当前模式默认开始时间，查到结束时间。
+- 两个都传：按指定闭区间查询。
+- `startTime` 必须早于或等于 `endTime`。
 
 ## 返回格式
 
@@ -84,7 +97,9 @@ POST https://trendapi.tgmeng.com/api/skill/search
       "mode": "REALTIME",
       "keywords": ["AI", "OpenAI"],
       "permission": "SEARCH",
-      "limit": 50
+      "limit": 50,
+      "startTime": null,
+      "endTime": null
     },
     "summary": {
       "total": 120,
@@ -114,7 +129,7 @@ POST https://trendapi.tgmeng.com/api/skill/search
 | `code` | 业务状态码，`200` 表示成功。 |
 | `message` | 返回信息或错误提示。 |
 | `data` | 智能体友好的搜索结果对象，包含 `query`、`summary`、`items`。 |
-| `data.query` | 本次查询信息，包括 `mode`、`keywords`、`permission`、`limit`。 |
+| `data.query` | 本次查询信息，包括 `mode`、`keywords`、`permission`、`limit`、`startTime`、`endTime`。 |
 | `data.summary` | 结果统计信息，包括 `total`、`returned`、`truncated`。 |
 | `data.items` | 搜索结果数组。 |
 | `data.items[].title` | 新闻或热点标题。 |
@@ -137,6 +152,9 @@ POST https://trendapi.tgmeng.com/api/skill/search
 | `limit must be integer` | `limit` 不是整数。 |
 | `limit must be greater than or equal to 0` | `limit` 是负数。 |
 | `历史模式 keywords empty error` | `HISTORY` 模式下没有传有效关键词。 |
+| `startTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd` | `startTime` 格式错误。 |
+| `endTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd` | `endTime` 格式错误。 |
+| `startTime must be before or equal to endTime` | 开始时间晚于结束时间。 |
 | 授权码校验异常 | 密钥无效、过期或缺少对应权限。 |
 
 注意：业务错误通常也可能以 HTTP 200 返回，所以调用方必须检查响应体里的 `code` 和 `message`。
@@ -160,7 +178,9 @@ POST https://trendapi.tgmeng.com/api/skill/search
 {
   "license": "USER_LICENSE_CODE",
   "keywords": ["OpenAI", "机器人"],
-  "mode": "TODAY"
+  "mode": "TODAY",
+  "startTime": "2026-05-05 00:00:00",
+  "endTime": "2026-05-05 12:00:00"
 }
 ```
 
@@ -170,7 +190,10 @@ POST https://trendapi.tgmeng.com/api/skill/search
 {
   "license": "USER_LICENSE_CODE",
   "keywords": ["OpenAI"],
-  "mode": "HISTORY"
+  "mode": "HISTORY",
+  "startTime": "2026-04-01",
+  "endTime": "2026-04-30",
+  "limit": 50
 }
 ```
 
@@ -182,8 +205,9 @@ POST https://trendapi.tgmeng.com/api/skill/search
 2. `keywords` 必须是字符串数组。
 3. `mode` 必须是 `REALTIME`、`TODAY` 或 `HISTORY`。
 4. 当 `mode = HISTORY` 时，`keywords` 必须至少包含一个非空字符串。
-5. 不要记录、展示或泄露完整 `license`。
-6. 权限失败时不要无限重试，应把错误信息反馈给调用者。
+5. 当用户指定非实时的时间范围时，优先使用 `startTime` 和 `endTime` 缩小查询范围。
+6. 不要记录、展示或泄露完整 `license`。
+7. 权限失败时不要无限重试，应把错误信息反馈给调用者。
 
 ## 安全要求
 

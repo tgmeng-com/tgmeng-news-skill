@@ -4,6 +4,18 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
 
+## [1.0.1] - 2026-05-05
+
+### Added
+
+- `TODAY` 和 `HISTORY` 查询模式新增可选 `startTime`、`endTime` 时间窗口参数，用于更精准地检索非实时历史数据。
+- 文档说明时间参数支持 `yyyy-MM-dd HH:mm:ss` 和 `yyyy-MM-dd` 两种格式。
+- 返回结构的 `data.query` 新增 `startTime`、`endTime` 回显字段。
+
+### Changed
+
+- 更新 `SKILL.md`、`README.md`、`references/openapi.yaml`、`references/api-contract.md`，同步非实时模式的时间窗口调用说明。
+
 ## [1.0.0] - 2026-05-03
 
 ### Added
