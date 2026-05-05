@@ -134,7 +134,7 @@ Common authorization errors:
 5. Read `code`, `message`, and `data` from the response envelope.
 6. Summarize results with source titles and URLs. Do not expose the license.
 
-Diagnostics may record request metadata such as IP address, User-Agent, request path, error message, license, and license hash. Do not include the full license in agent logs or user-facing output.
+Diagnostics may record request metadata such as IP address, User-Agent, request path, error message, and license. Do not include the full license in agent logs or user-facing output.
 
 ## Detailed Contract
 

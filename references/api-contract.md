@@ -159,7 +159,7 @@ Common permission errors:
 - Never hard-code a license in the skill. If the user does not have a license, direct them to `https://wechat.tgmeng.com` to obtain a Tgmeng universal license code (糖果梦通用密钥).
 - Never print a full license in logs or user-facing output.
 - Pass the license only in the HTTPS request body.
-- Diagnostics may record request metadata such as IP address, User-Agent, request path, error message, license, and license hash.
+- Diagnostics may record request metadata such as IP address, User-Agent, request path, error message, and license.
 - Do not retry aggressively on authorization failures.
 - Do not call `HISTORY` without a keyword.
 

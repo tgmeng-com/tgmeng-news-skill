@@ -238,7 +238,7 @@ POST https://trendapi.tgmeng.com/api/skill/search
 - 不要在日志或回复中输出完整密钥。
 - 不要把密钥提交到 Git 仓库。
 - 外部智能体应通过运行时参数、环境变量或用户输入传入密钥。没有密钥时，引导用户前往 `https://wechat.tgmeng.com` 获取糖果梦通用密钥。
-- 接口会记录调用排查信息，包括访问 IP、User-Agent、请求路径、错误信息、密钥和密钥哈希。
+- 接口会记录调用排查信息，包括访问 IP、User-Agent、请求路径、错误信息和密钥。
 - `HISTORY` 查询可能较重，必须带关键词。
 
 ## 相关文件
