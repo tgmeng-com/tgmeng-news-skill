@@ -1,6 +1,6 @@
 ---
 name: tgmeng-news-skill
-description: Search Tgmeng in-site news and hotspot data through the Tgmeng Skill Search API. Use when an agent needs to query current, today, or historical Tgmeng news/hotspot records with a user-provided license, keyword array, strict mode enum, optional non-realtime time window, and optional result limit for external assistants such as Longxia, Hemes, or other tool-calling agents.
+description: Search Tgmeng in-site news and hotspot data through the Tgmeng Skill Search API. Use when an agent needs to query current, today, or historical Tgmeng news/hotspot records with a user-provided license, keyword array, strict mode value, optional non-realtime time window, and optional result limit for external assistants such as Longxia, Hemes, or other tool-calling agents.
 ---
 
 # Tgmeng News Skill
@@ -26,6 +26,7 @@ Send JSON with these business parameters:
   "mode": "REALTIME",
   "startTime": null,
   "endTime": null,
+  "rootCategories": ["科技"],
   "limit": 50
 }
 ```
@@ -37,7 +38,16 @@ Parameter contract:
 - `mode`: enum string. Required. Must be exactly one of `REALTIME`, `TODAY`, or `HISTORY`.
 - `startTime`: string or null. Optional. Inclusive time window start for `TODAY` and `HISTORY`; ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`. Date-only values are normalized to `00:00:00`.
 - `endTime`: string or null. Optional. Inclusive time window end for `TODAY` and `HISTORY`; ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`. Date-only values are normalized to `23:59:59`.
+- `rootCategories`: string array or string. Optional. Filter by root category, matching the `items[].rootCategory` field exactly. Empty or omitted means all root categories.
 - `limit`: integer or null. Optional. Maximum number of returned items. `null`, omitted, or `0` means no limit. Negative values are invalid.
+
+Available `rootCategories` values:
+
+```text
+新闻, 羊毛, 媒体, 电视, 生活, 社区, 财经, 股讯, 体育, 科技, 设计, 影音, 游戏, 健康, 教育, 期货, AI, 副业
+```
+
+Use these values exactly. For example, pass `科技` or `新闻`.
 
 Mode behavior:
 
@@ -46,6 +56,7 @@ Mode behavior:
 - `HISTORY`: Query long-term persisted hotspot history, optionally narrowed by `startTime` and `endTime`. Requires `SKILLHISTORY` license permission and non-empty `keywords`.
 
 Keyword matching is OR-style fuzzy title matching: an item is returned when its title contains any keyword.
+Root category filtering is AND-style with keyword matching: an item must match the requested `rootCategories` if the filter is provided. Multiple root category values use OR matching.
 
 For non-realtime modes, if only `startTime` is provided, the API searches from that time to now. If only `endTime` is provided, the API uses the mode's default start time and the provided end time. `startTime` must be before or equal to `endTime`.
 
@@ -64,7 +75,8 @@ The API returns Tgmeng's standard envelope:
       "permission": "SEARCH",
       "limit": 50,
       "startTime": null,
-      "endTime": null
+      "endTime": null,
+      "rootCategories": ["科技"]
     },
     "summary": {
       "total": 120,
@@ -101,6 +113,8 @@ Common parameter errors:
 - `参数keywords格式不正确，请传字符串数组`: `keywords` is not a JSON array.
 - `limit must be integer`: `limit` is not an integer.
 - `limit must be greater than or equal to 0`: `limit` is negative.
+- `rootCategories must be string array or string`: `rootCategories` is neither a JSON string array nor a string.
+- `rootCategories unsupported, available values: 新闻, 羊毛, 媒体, 电视, 生活, 社区, 财经, 股讯, 体育, 科技, 设计, 影音, 游戏, 健康, 教育, 期货, AI, 副业`: `rootCategories` contains an unsupported value.
 - `历史模式 keywords empty error`: `mode` is `HISTORY` but `keywords` has no non-blank values.
 - `startTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd`: `startTime` format is invalid.
 - `endTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd`: `endTime` format is invalid.
@@ -120,7 +134,7 @@ Common authorization errors:
 5. Read `code`, `message`, and `data` from the response envelope.
 6. Summarize results with source titles and URLs. Do not expose the license.
 
-Server-side diagnostics may record request metadata such as IP address, User-Agent, request path, error message, masked license, and license hash. Do not include the full license in agent logs or user-facing output.
+Diagnostics may record request metadata such as IP address, User-Agent, request path, error message, license, and license hash. Do not include the full license in agent logs or user-facing output.
 
 ## Detailed Contract
 

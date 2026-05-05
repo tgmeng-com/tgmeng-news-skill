@@ -29,6 +29,8 @@ paths:
                     - AI
                     - OpenAI
                   mode: REALTIME
+                  rootCategories:
+                    - AI
                   limit: 50
               today:
                 summary: Today search without limit
@@ -37,6 +39,8 @@ paths:
                   keywords:
                     - 机器人
                   mode: TODAY
+                  rootCategories:
+                    - 科技
                   startTime: '2026-05-05 00:00:00'
                   endTime: '2026-05-05 12:00:00'
                   limit: 0
@@ -47,6 +51,8 @@ paths:
                   keywords:
                     - OpenAI
                   mode: HISTORY
+                  rootCategories:
+                    - AI
                   startTime: '2026-04-01'
                   endTime: '2026-04-30'
                   limit: 20
@@ -73,6 +79,8 @@ paths:
                         limit: 50
                         startTime: null
                         endTime: null
+                        rootCategories:
+                          - 科技
                       summary:
                         total: 120
                         returned: 50
@@ -154,6 +162,52 @@ components:
           examples:
             - '2026-05-05 23:59:59'
             - '2026-05-05'
+        rootCategories:
+          oneOf:
+            - type: array
+              items:
+                type: string
+                enum:
+                  - 新闻
+                  - 羊毛
+                  - 媒体
+                  - 电视
+                  - 生活
+                  - 社区
+                  - 财经
+                  - 股讯
+                  - 体育
+                  - 科技
+                  - 设计
+                  - 影音
+                  - 游戏
+                  - 健康
+                  - 教育
+                  - 期货
+                  - AI
+                  - 副业
+            - type: string
+              enum:
+                - 新闻
+                - 羊毛
+                - 媒体
+                - 电视
+                - 生活
+                - 社区
+                - 财经
+                - 股讯
+                - 体育
+                - 科技
+                - 设计
+                - 影音
+                - 游戏
+                - 健康
+                - 教育
+                - 期货
+                - AI
+                - 副业
+            - type: 'null'
+          description: Optional exact-match root category filter. Available values include 新闻, 科技, AI. Empty or omitted means all root categories.
     SkillSearchResponse:
       type: object
       required:
@@ -214,6 +268,32 @@ components:
             - string
             - 'null'
           description: Normalized time window end used by the query, or null.
+        rootCategories:
+          type:
+            - array
+            - 'null'
+          items:
+            type: string
+            enum:
+              - 新闻
+              - 羊毛
+              - 媒体
+              - 电视
+              - 生活
+              - 社区
+              - 财经
+              - 股讯
+              - 体育
+              - 科技
+              - 设计
+              - 影音
+              - 游戏
+              - 健康
+              - 教育
+              - 期货
+              - AI
+              - 副业
+          description: Root category filters used by the query, or null.
     SkillSearchSummary:
       type: object
       properties:
