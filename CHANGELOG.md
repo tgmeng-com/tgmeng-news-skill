@@ -11,10 +11,14 @@
 - `TODAY` 和 `HISTORY` 查询模式新增可选 `startTime`、`endTime` 时间窗口参数，用于更精准地检索非实时历史数据。
 - 文档说明时间参数支持 `yyyy-MM-dd HH:mm:ss` 和 `yyyy-MM-dd` 两种格式。
 - 返回结构的 `data.query` 新增 `startTime`、`endTime` 回显字段。
+- 新增 `rootCategories` 根分类过滤参数，支持按新闻、科技、AI 等根分类缩小搜索范围。
+- 文档补充 `rootCategories` 可选值列表，OpenAPI 契约同步增加可选值约束。
+- 返回结构的 `data.query` 新增 `rootCategories` 回显字段。
 
 ### Changed
 
 - 更新 `SKILL.md`、`README.md`、`references/openapi.yaml`、`references/api-contract.md`，同步非实时模式的时间窗口调用说明。
+- 分类过滤只对外支持根分类，不暴露平台分类过滤参数。
 
 ## [1.0.0] - 2026-05-03
 
