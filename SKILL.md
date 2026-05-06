@@ -1,6 +1,6 @@
 ---
 name: tgmeng-news-skill
-description: Search Tgmeng in-site news and hotspot data through the Tgmeng Skill Search API. Use when an agent needs to query current, today, or historical Tgmeng news/hotspot records with a user-provided license, keyword array, strict mode value, optional non-realtime time window, and optional result limit for external assistants such as Longxia, Hemes, or other tool-calling agents.
+description: Search Tgmeng in-site news and hotspot data through the Tgmeng Skill Search API. Use when an agent needs to query current, today, or historical Tgmeng news/hotspot records with a user-provided license, keyword array, strict mode value, optional non-realtime time window, and optional result limit for external assistants such as Longxia, Hermes, or other tool-calling agents.
 ---
 
 # Tgmeng News Skill
