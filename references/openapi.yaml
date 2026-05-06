@@ -14,6 +14,8 @@ paths:
       description: |
         Search current, today, or historical Tgmeng in-site news and hotspot records.
         REALTIME requires SEARCH permission. TODAY and HISTORY require SKILLHISTORY permission.
+        TODAY and HISTORY require at least one non-blank keyword.
+        Licenses include SEARCH permission for REALTIME by default. To use TODAY or HISTORY, contact the administrator and request SKILLHISTORY permission.
       requestBody:
         required: true
         content:
@@ -135,7 +137,7 @@ components:
           description: Tgmeng universal license code (糖果梦通用密钥). If absent, obtain one at https://wechat.tgmeng.com. Must not be logged or exposed.
         keywords:
           type: array
-          description: Keyword list for OR-style fuzzy title matching. HISTORY requires at least one non-blank item.
+          description: Keyword list for OR-style fuzzy title matching. TODAY and HISTORY require at least one non-blank item.
           items:
             type: string
         mode:

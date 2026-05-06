@@ -34,7 +34,7 @@ Send JSON with these business parameters:
 Parameter contract:
 
 - `license`: string. Required. Tgmeng universal license code (糖果梦通用密钥). If the user does not have one, direct them to https://wechat.tgmeng.com to obtain it. Do not log, expose, or hard-code it.
-- `keywords`: string array. Required by schema. Empty arrays are allowed for `REALTIME` and `TODAY`; `HISTORY` requires at least one non-blank keyword.
+- `keywords`: string array. Required by schema. Empty arrays are allowed only for `REALTIME`; `TODAY` and `HISTORY` require at least one non-blank keyword.
 - `mode`: enum string. Required. Must be exactly one of `REALTIME`, `TODAY`, or `HISTORY`.
 - `startTime`: string or null. Optional. Inclusive time window start for `TODAY` and `HISTORY`; ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`. Date-only values are normalized to `00:00:00`.
 - `endTime`: string or null. Optional. Inclusive time window end for `TODAY` and `HISTORY`; ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`. Date-only values are normalized to `23:59:59`.
@@ -52,8 +52,10 @@ Use these values exactly. For example, pass `科技` or `新闻`.
 Mode behavior:
 
 - `REALTIME`: Query current in-memory hotspot cache. Requires `SEARCH` license permission.
-- `TODAY`: Query today's persisted hotspot history, optionally narrowed by `startTime` and `endTime`. Requires `SKILLHISTORY` license permission.
+- `TODAY`: Query today's persisted hotspot history, optionally narrowed by `startTime` and `endTime`. Requires `SKILLHISTORY` license permission and non-empty `keywords`.
 - `HISTORY`: Query long-term persisted hotspot history, optionally narrowed by `startTime` and `endTime`. Requires `SKILLHISTORY` license permission and non-empty `keywords`.
+
+Licenses have `SEARCH` permission for `REALTIME` by default. If the user needs `TODAY` or `HISTORY`, tell them to contact the administrator, explain the use case, and request `SKILLHISTORY` permission.
 
 Keyword matching is OR-style fuzzy title matching: an item is returned when its title contains any keyword.
 Root category filtering is AND-style with keyword matching: an item must match the requested `rootCategories` if the filter is provided. Multiple root category values use OR matching.
@@ -115,7 +117,7 @@ Common parameter errors:
 - `limit must be greater than or equal to 0`: `limit` is negative.
 - `rootCategories must be string array or string`: `rootCategories` is neither a JSON string array nor a string.
 - `rootCategories unsupported, available values: 新闻, 羊毛, 媒体, 电视, 生活, 社区, 财经, 股讯, 体育, 科技, 设计, 影音, 游戏, 健康, 教育, 期货, AI, 副业`: `rootCategories` contains an unsupported value.
-- `历史模式 keywords empty error`: `mode` is `HISTORY` but `keywords` has no non-blank values.
+- `TODAY/HISTORY mode keywords empty error`: `mode` is `TODAY` or `HISTORY` but `keywords` has no non-blank values.
 - `startTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd`: `startTime` format is invalid.
 - `endTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd`: `endTime` format is invalid.
 - `startTime must be before or equal to endTime`: Time window is reversed.
@@ -128,7 +130,7 @@ Common authorization errors:
 ## Recommended Agent Workflow
 
 1. Validate request locally before calling the API: `license` non-blank, `keywords` is an array, and `mode` is a valid enum.
-2. For `HISTORY`, require at least one non-blank keyword.
+2. For `TODAY` and `HISTORY`, require at least one non-blank keyword.
 3. For `TODAY` or `HISTORY`, pass `startTime` and `endTime` when the user asks for a precise period.
 4. Call the endpoint with JSON content type.
 5. Read `code`, `message`, and `data` from the response envelope.
@@ -142,8 +144,6 @@ For exact schemas, examples, and OpenAPI operation metadata, read:
 
 - `references/openapi.yaml`
 - `references/api-contract.md`
-
-
 
 
 

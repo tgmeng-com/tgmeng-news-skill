@@ -60,7 +60,7 @@ POST https://trendapi.tgmeng.com/api/skill/search
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `license` | string | 是 | 糖果梦通用密钥。由调用方传入，Skill 内不保存、不写死。没有密钥时，可前往 `https://wechat.tgmeng.com` 获取。 |
-| `keywords` | string[] | 是 | 关键词数组，使用 OR 逻辑模糊匹配标题。 |
+| `keywords` | string[] | 是 | 关键词数组，使用 OR 逻辑模糊匹配标题。`REALTIME` 可以为空数组，`TODAY` 和 `HISTORY` 必须至少包含一个非空关键词。 |
 | `mode` | enum | 是 | 查询模式，只能是 `REALTIME`、`TODAY`、`HISTORY`。 |
 | `startTime` | string/null | 否 | `TODAY` 和 `HISTORY` 的时间窗口开始时间，`REALTIME` 会忽略。支持 `yyyy-MM-dd HH:mm:ss` 或 `yyyy-MM-dd`，仅日期会补为当天 `00:00:00`。 |
 | `endTime` | string/null | 否 | `TODAY` 和 `HISTORY` 的时间窗口结束时间，`REALTIME` 会忽略。支持 `yyyy-MM-dd HH:mm:ss` 或 `yyyy-MM-dd`，仅日期会补为当天 `23:59:59`。 |
@@ -80,10 +80,12 @@ POST https://trendapi.tgmeng.com/api/skill/search
 | mode | 含义 | 数据范围 | 权限要求 | keywords 要求 |
 | --- | --- | --- | --- | --- |
 | `REALTIME` | 实时数据 | 当前内存缓存热点 | `SEARCH` | 可以为空数组 |
-| `TODAY` | 今日数据 | 当天持久化历史数据 | `SKILLHISTORY` | 可以为空数组 |
+| `TODAY` | 今日数据 | 当天持久化历史数据 | `SKILLHISTORY` | 必须至少有一个非空关键词 |
 | `HISTORY` | 历史数据 | 长期持久化历史数据 | `SKILLHISTORY` | 必须至少有一个非空关键词 |
 
 注意：`mode` 只支持英文大写值，不支持中文。
+
+密钥默认具有 `REALTIME` 查询所需的 `SEARCH` 权限。如果需要调用 `TODAY` 或 `HISTORY`，请联系管理员说明使用场景，审核后开启 `SKILLHISTORY` 权限。
 
 ## 分类过滤
 
@@ -170,7 +172,7 @@ POST https://trendapi.tgmeng.com/api/skill/search
 | `limit must be greater than or equal to 0` | `limit` 是负数。 |
 | `rootCategories must be string array or string` | `rootCategories` 不是字符串数组或字符串。 |
 | `rootCategories unsupported, available values: 新闻, 羊毛, 媒体, 电视, 生活, 社区, 财经, 股讯, 体育, 科技, 设计, 影音, 游戏, 健康, 教育, 期货, AI, 副业` | `rootCategories` 包含不支持的分类。 |
-| `历史模式 keywords empty error` | `HISTORY` 模式下没有传有效关键词。 |
+| `TODAY/HISTORY mode keywords empty error` | `TODAY` 或 `HISTORY` 模式下没有传有效关键词。 |
 | `startTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd` | `startTime` 格式错误。 |
 | `endTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd` | `endTime` 格式错误。 |
 | `startTime must be before or equal to endTime` | 开始时间晚于结束时间。 |
@@ -226,7 +228,7 @@ POST https://trendapi.tgmeng.com/api/skill/search
 1. `license` 必须是非空字符串。
 2. `keywords` 必须是字符串数组。
 3. `mode` 必须是 `REALTIME`、`TODAY` 或 `HISTORY`。
-4. 当 `mode = HISTORY` 时，`keywords` 必须至少包含一个非空字符串。
+4. 当 `mode = TODAY` 或 `mode = HISTORY` 时，`keywords` 必须至少包含一个非空字符串。
 5. 当用户指定非实时的时间范围时，优先使用 `startTime` 和 `endTime` 缩小查询范围。
 6. 当用户要求某类新闻、热点或平台范围时，优先使用 `rootCategories`。
 7. 不要记录、展示或泄露完整 `license`。
@@ -238,16 +240,15 @@ POST https://trendapi.tgmeng.com/api/skill/search
 - 不要在日志或回复中输出完整密钥。
 - 不要把密钥提交到 Git 仓库。
 - 外部智能体应通过运行时参数、环境变量或用户输入传入密钥。没有密钥时，引导用户前往 `https://wechat.tgmeng.com` 获取糖果梦通用密钥。
+- 密钥默认只具备 `REALTIME` 查询权限；需要 `TODAY` 或 `HISTORY` 权限时，联系管理员说明情况后开启。
 - 接口会记录调用排查信息，包括访问 IP、User-Agent、请求路径、错误信息和密钥。
-- `HISTORY` 查询可能较重，必须带关键词。
+- `TODAY` 和 `HISTORY` 查询必须带关键词；`HISTORY` 查询可能较重。
 
 ## 相关文件
 
 - `SKILL.md`：Skill 主入口说明。
 - `references/openapi.yaml`：OpenAPI 3.1 标准定义。
 - `references/api-contract.md`：详细接口契约。
-
-
 
 
 

@@ -34,7 +34,7 @@ Use the fixed production endpoint `https://trendapi.tgmeng.com/api/skill/search`
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `license` | string | Yes | Tgmeng universal license code (糖果梦通用密钥) used for authorization. If the user does not have one, direct them to `https://wechat.tgmeng.com`. Never log or reveal it. |
-| `keywords` | string[] | Yes | Keyword array. Items are trimmed by the API. Blank items are ignored. |
+| `keywords` | string[] | Yes | Keyword array. Items are trimmed by the API. Blank items are ignored. `TODAY` and `HISTORY` require at least one non-blank keyword. |
 | `mode` | enum | Yes | One of `REALTIME`, `TODAY`, `HISTORY`. Case-sensitive. |
 | `startTime` | string/null | No | Inclusive time window start for `TODAY` and `HISTORY`. Ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`; date-only values are normalized to `00:00:00`. |
 | `endTime` | string/null | No | Inclusive time window end for `TODAY` and `HISTORY`. Ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`; date-only values are normalized to `23:59:59`. |
@@ -54,8 +54,10 @@ Use these values exactly, for example `科技`, `新闻`, or `AI`.
 | Mode | Data source | Permission | Keyword rule |
 | --- | --- | --- | --- |
 | `REALTIME` | Current in-memory cache | `SEARCH` | May be empty. |
-| `TODAY` | Today's persisted history | `SKILLHISTORY` | May be empty. |
+| `TODAY` | Today's persisted history | `SKILLHISTORY` | Must contain at least one non-blank keyword. |
 | `HISTORY` | Long-term persisted history | `SKILLHISTORY` | Must contain at least one non-blank keyword. |
+
+Licenses include the `SEARCH` permission required by `REALTIME` by default. To use `TODAY` or `HISTORY`, contact the administrator, explain the use case, and request `SKILLHISTORY` permission.
 
 ### Time Window
 
@@ -138,7 +140,7 @@ Common parameter errors:
 | `mode empty error` | `mode` is missing or null. |
 | `参数mode不支持，请传[REALTIME, TODAY, HISTORY]` | `mode` is not a valid enum value. |
 | `参数keywords格式不正确，请传字符串数组` | `keywords` is not a JSON string array. |
-| `历史模式 keywords empty error` | `mode = HISTORY` but keywords is empty or blank-only. |
+| `TODAY/HISTORY mode keywords empty error` | `mode = TODAY` or `mode = HISTORY` but keywords is empty or blank-only. |
 | `limit must be integer` | `limit` is not an integer. |
 | `limit must be greater than or equal to 0` | `limit` is negative. |
 | `rootCategories must be string array or string` | `rootCategories` is neither a JSON string array nor a string. |
@@ -161,7 +163,7 @@ Common permission errors:
 - Pass the license only in the HTTPS request body.
 - Diagnostics may record request metadata such as IP address, User-Agent, request path, error message, and license.
 - Do not retry aggressively on authorization failures.
-- Do not call `HISTORY` without a keyword.
+- Do not call `TODAY` or `HISTORY` without a keyword.
 
 ## Examples
 
