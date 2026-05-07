@@ -150,7 +150,7 @@ POST https://trendapi.tgmeng.com/api/skill/search
 | `data` | 智能体友好的搜索结果对象，包含 `query`、`summary`、`items`。 |
 | `data.query` | 本次查询信息，包括 `mode`、`keywords`、`permission`、`limit`、`startTime`、`endTime`、`rootCategories`。 |
 | `data.summary` | 结果统计信息，包括 `total`、`returned`、`truncated`。 |
-| `data.items` | 搜索结果数组。 |
+| `data.items` | 搜索结果数组，按更新时间从最新到最久排列；越靠前的结果越新，而不是按照热点热度权重排序，方便智能体知道结果的排序逻辑。 |
 | `data.items[].title` | 新闻或热点标题。 |
 | `data.items[].url` | 来源链接，部分数据可能为空。 |
 | `data.items[].source` | 来源平台名称。 |
@@ -249,7 +249,4 @@ POST https://trendapi.tgmeng.com/api/skill/search
 - `SKILL.md`：Skill 主入口说明。
 - `references/openapi.yaml`：OpenAPI 3.1 标准定义。
 - `references/api-contract.md`：详细接口契约。
-
-
-
 

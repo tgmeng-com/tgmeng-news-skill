@@ -101,7 +101,7 @@ The API returns Tgmeng's standard envelope:
 }
 ```
 
-Treat `data.items` as the result list. Use `data.query` to understand what was searched and `data.summary` to detect truncation. Some item fields may be absent or null depending on source and mode.
+Treat `data.items` as the result list. Items are ordered by update time from newest to oldest; earlier items in the array are newer, rather than being sorted by hotspot popularity weight. This helps agents understand the result ordering logic. Use `data.query` to understand what was searched and `data.summary` to detect truncation. Some item fields may be absent or null depending on source and mode.
 
 ## Error Handling
 
@@ -144,7 +144,4 @@ For exact schemas, examples, and OpenAPI operation metadata, read:
 
 - `references/openapi.yaml`
 - `references/api-contract.md`
-
-
-
 
