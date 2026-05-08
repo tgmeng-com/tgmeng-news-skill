@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
-  title: Tgmeng News Skill Search API
-  version: 1.2.0
-  description: Search Tgmeng in-site news and hotspot data by license, keyword array, strict search mode, optional time window, and optional result limit.
+  title: Tgmeng News Skill APIs
+  version: 1.3.0
+  description: Search Tgmeng in-site news, hotspot data, and AI-generated Tgmeng Index lists by license, keyword array, mode, category filters, optional time window, and optional user-approved result limit.
 servers:
   - url: https://trendapi.tgmeng.com
     description: Fixed production API server
@@ -15,7 +15,7 @@ paths:
         Search current, today, or historical Tgmeng in-site news and hotspot records.
         REALTIME requires SEARCH permission. TODAY and HISTORY require SKILLHISTORY permission.
         TODAY and HISTORY require at least one non-blank keyword.
-        Licenses include SEARCH permission for REALTIME by default. To use TODAY or HISTORY, contact the administrator and request SKILLHISTORY permission.
+        Set limit to null by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit.
       requestBody:
         required: true
         content:
@@ -24,7 +24,7 @@ paths:
               $ref: '#/components/schemas/SkillSearchRequest'
             examples:
               realtime:
-                summary: Realtime search
+                summary: Realtime search with default limit null
                 value:
                   license: USER_LICENSE_CODE
                   keywords:
@@ -33,9 +33,9 @@ paths:
                   mode: REALTIME
                   rootCategories:
                     - AI
-                  limit: 50
+                  limit: null
               today:
-                summary: Today search without limit
+                summary: Today search with default limit null
                 value:
                   license: USER_LICENSE_CODE
                   keywords:
@@ -45,9 +45,9 @@ paths:
                     - 科技
                   startTime: '2026-05-05 00:00:00'
                   endTime: '2026-05-05 12:00:00'
-                  limit: 0
-              history:
-                summary: Historical search
+                  limit: null
+              historyWithUserApprovedLimit:
+                summary: Historical search with user-approved limit
                 value:
                   license: USER_LICENSE_CODE
                   keywords:
@@ -65,55 +65,49 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SkillSearchResponse'
-              examples:
-                success:
-                  summary: Successful result
-                  value:
-                    code: 200
-                    message: 请求成功
-                    data:
-                      query:
-                        mode: REALTIME
-                        keywords:
-                          - AI
-                          - OpenAI
-                        permission: SEARCH
-                        limit: 50
-                        startTime: null
-                        endTime: null
-                        rootCategories:
-                          - 科技
-                      summary:
-                        total: 120
-                        returned: 50
-                        truncated: true
-                      items:
-                        - title: OpenAI releases a new model
-                          url: https://example.com/news/openai-model
-                          source: Example News
-                          category: AI
-                          rootCategory: 科技
-                          publishedAt: '2026-05-03 01:00:00'
-                          rank: 1
-                          simHash: 123456789
-                invalidMode:
-                  summary: Invalid mode
-                  value:
-                    code: 666
-                    message: 参数mode不支持，请传[REALTIME, TODAY, HISTORY]
-                    data: null
-                invalidLimit:
-                  summary: Invalid limit
-                  value:
-                    code: 666
-                    message: limit must be greater than or equal to 0
-                    data: null
-                invalidLimitType:
-                  summary: Invalid limit type
-                  value:
-                    code: 666
-                    message: limit must be integer
-                    data: null
+  /api/skill/index:
+    post:
+      operationId: searchTgmengIndex
+      summary: Search AI-generated Tgmeng Index lists
+      description: |
+        Search cached AI-generated Tgmeng Index lists. The endpoint returns indexed hotspot titles, categories, update time, and hotScore.
+        Use this endpoint when the user clearly asks for 糖果指数, index lists, 热度指数, AI-generated ranking, or 综合热度.
+        If the user request is ambiguous between raw hotspot search and Tgmeng Index search, ask the user which capability they want before calling an API.
+        Set limit to null by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TgmengIndexRequest'
+            examples:
+              indexSearch:
+                summary: Tgmeng Index search with default limit null
+                value:
+                  license: USER_LICENSE_CODE
+                  keywords:
+                    - AI
+                  categories:
+                    - all
+                    - technology
+                    - ai
+                  limit: null
+              indexSearchWithUserApprovedLimit:
+                summary: Tgmeng Index search with user-approved limit
+                value:
+                  license: USER_LICENSE_CODE
+                  keywords:
+                    - AI
+                  categories:
+                    - ai
+                  limit: 10
+      responses:
+        '200':
+          description: Standard Tgmeng response envelope. Business errors may also return HTTP 200; inspect code and message.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TgmengIndexResponse'
 components:
   schemas:
     SkillSearchMode:
@@ -125,7 +119,7 @@ components:
         - HISTORY
     SkillSearchRequest:
       type: object
-      additionalProperties: false
+      additionalProperties: true
       required:
         - license
         - keywords
@@ -147,7 +141,7 @@ components:
             - integer
             - 'null'
           minimum: 0
-          description: Maximum number of returned items. null, omitted, or 0 means no limit.
+          description: Maximum number of returned items. null means no limit by default. Agents must not set this field to a concrete number unless the user explicitly requested a count or confirmed a limit.
         startTime:
           type:
             - string
@@ -209,7 +203,39 @@ components:
                 - AI
                 - 副业
             - type: 'null'
-          description: Optional exact-match root category filter. Available values include 新闻, 科技, AI. Empty or omitted means all root categories.
+          description: Optional exact-match root category filter. Empty or omitted means all root categories.
+    TgmengIndexRequest:
+      type: object
+      additionalProperties: true
+      required:
+        - license
+      properties:
+        license:
+          type: string
+          minLength: 1
+          description: Tgmeng universal license code (糖果梦通用密钥). Must not be logged or exposed.
+        keywords:
+          oneOf:
+            - type: array
+              items:
+                type: string
+            - type: string
+            - type: 'null'
+          description: Optional keyword filter for hotspot titles. Empty or omitted means no title filtering. Multiple keywords use OR matching.
+        categories:
+          oneOf:
+            - type: array
+              items:
+                type: string
+            - type: string
+            - type: 'null'
+          description: Optional Tgmeng Index category filter. Empty or omitted means all Tgmeng Index categories. Supported canonical values include all, dubang, alltalk, technology, finance, entertainment, car, sports, game, livelihood, ai, sideline, education. Common Chinese aliases such as 综合, 毒榜, 争议榜, 科技, 财经, 娱乐, 汽车, 体育, 游戏, 民生, AI, 副业, 教育 are accepted. The API also accepts request field aliases category, type, platformCategory, and 分类.
+        limit:
+          type:
+            - integer
+            - 'null'
+          minimum: 0
+          description: Maximum number of returned items. null means no limit by default. Agents must not set this field to a concrete number unless the user explicitly requested a count or confirmed a limit.
     SkillSearchResponse:
       type: object
       required:
@@ -240,6 +266,7 @@ components:
           $ref: '#/components/schemas/SkillSearchSummary'
         items:
           type: array
+          description: Items are ordered by update time from newest to oldest, not by hotspot popularity weight.
           items:
             $ref: '#/components/schemas/SkillSearchItem'
     SkillSearchQuery:
@@ -276,25 +303,6 @@ components:
             - 'null'
           items:
             type: string
-            enum:
-              - 新闻
-              - 羊毛
-              - 媒体
-              - 电视
-              - 生活
-              - 社区
-              - 财经
-              - 股讯
-              - 体育
-              - 科技
-              - 设计
-              - 影音
-              - 游戏
-              - 健康
-              - 教育
-              - 期货
-              - AI
-              - 副业
           description: Root category filters used by the query, or null.
     SkillSearchSummary:
       type: object
@@ -353,5 +361,92 @@ components:
             - 'null'
           format: int64
           description: Similarity hash used by historical data when available.
-
-
+    TgmengIndexResponse:
+      type: object
+      required:
+        - code
+        - message
+        - data
+      properties:
+        code:
+          type: integer
+          description: Business status code. 200 means success.
+        message:
+          type: string
+          description: Human-readable result or error message.
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/TgmengIndexData'
+            - type: 'null'
+    TgmengIndexData:
+      type: object
+      required:
+        - query
+        - summary
+        - items
+      properties:
+        query:
+          $ref: '#/components/schemas/TgmengIndexQuery'
+        summary:
+          $ref: '#/components/schemas/SkillSearchSummary'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TgmengIndexItem'
+    TgmengIndexQuery:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum:
+            - INDEX
+        keywords:
+          type: array
+          items:
+            type: string
+        permission:
+          type: string
+          enum:
+            - SEARCH
+        limit:
+          type:
+            - integer
+            - 'null'
+        categories:
+          type: array
+          items:
+            type: string
+    TgmengIndexItem:
+      type: object
+      additionalProperties: true
+      properties:
+        title:
+          type:
+            - string
+            - 'null'
+          description: Hotspot title.
+        source:
+          type:
+            - string
+            - 'null'
+          description: Usually 糖果指数.
+        category:
+          type:
+            - string
+            - 'null'
+          description: Tgmeng Index category name.
+        rootCategory:
+          type:
+            - string
+            - 'null'
+          description: Root category, usually 糖果梦.
+        publishedAt:
+          type:
+            - string
+            - 'null'
+          description: Index list update time in yyyy-MM-dd HH:mm:ss when available.
+        hotScore:
+          type:
+            - integer
+            - 'null'
+          description: Tgmeng Index heat value. Larger values mean higher heat.

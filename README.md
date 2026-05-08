@@ -6,16 +6,18 @@
 
 ## 能力说明
 
-当前 Skill 暴露的核心能力是：
+当前 Skill 暴露两个核心能力：
 
 ```text
-按密钥、关键词数组、查询模式和可选时间窗口，搜索 Tgmeng 站内新闻和热点数据
+1. 热榜数据搜索：按密钥、关键词数组、查询模式和可选时间窗口，搜索 Tgmeng 站内新闻和热点数据
+2. 糖果指数查询：按密钥、关键词和分类，查询糖果指数榜单
 ```
 
 底层实际调用接口：
 
 ```text
 POST https://trendapi.tgmeng.com/api/skill/search
+POST https://trendapi.tgmeng.com/api/skill/index
 ```
 
 ## 目录结构
@@ -51,7 +53,7 @@ POST https://trendapi.tgmeng.com/api/skill/search
   "startTime": null,
   "endTime": null,
   "rootCategories": ["科技"],
-  "limit": 50
+  "limit": null
 }
 ```
 
@@ -65,7 +67,7 @@ POST https://trendapi.tgmeng.com/api/skill/search
 | `startTime` | string/null | 否 | `TODAY` 和 `HISTORY` 的时间窗口开始时间，`REALTIME` 会忽略。支持 `yyyy-MM-dd HH:mm:ss` 或 `yyyy-MM-dd`，仅日期会补为当天 `00:00:00`。 |
 | `endTime` | string/null | 否 | `TODAY` 和 `HISTORY` 的时间窗口结束时间，`REALTIME` 会忽略。支持 `yyyy-MM-dd HH:mm:ss` 或 `yyyy-MM-dd`，仅日期会补为当天 `23:59:59`。 |
 | `rootCategories` | string[]/string/null | 否 | 按根分类过滤，精确匹配返回结果里的 `items[].rootCategory`。不传或为空表示不过滤。 |
-| `limit` | integer/null | 否 | 最大返回条数。`null`、不传或 `0` 表示不限制；负数非法。 |
+| `limit` | integer/null | 否 | 最大返回条数。默认传 `null` 表示不限制；接口也兼容不传或 `0` 表示不限制；负数非法。智能体不要自行添加、推断或缩小为具体数字，只有用户明确指定数量或确认限制条数后才可以传具体数字。 |
 
 `rootCategories` 可选值：
 
@@ -115,15 +117,15 @@ POST https://trendapi.tgmeng.com/api/skill/search
       "mode": "REALTIME",
       "keywords": ["AI", "OpenAI"],
       "permission": "SEARCH",
-      "limit": 50,
+      "limit": null,
       "startTime": null,
       "endTime": null,
       "rootCategories": ["科技"]
     },
     "summary": {
       "total": 120,
-      "returned": 50,
-      "truncated": true
+      "returned": 120,
+      "truncated": false
     },
     "items": [
       {
@@ -160,6 +162,113 @@ POST https://trendapi.tgmeng.com/api/skill/search
 | `data.items[].rank` | 来源榜单排序。 |
 | `data.items[].simHash` | 历史数据相似度哈希，部分模式可能为空。 |
 
+## 糖果指数查询
+
+糖果指数接口用于查询糖果指数榜单，适合查看综合热点、分类热点和对应热度指数。
+
+接口地址：
+
+```text
+POST https://trendapi.tgmeng.com/api/skill/index
+```
+
+请求示例：
+
+```json
+{
+  "license": "USER_LICENSE_CODE",
+  "keywords": ["AI"],
+  "categories": ["all", "technology", "ai"],
+  "limit": null
+}
+```
+
+字段说明：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `license` | string | 是 | 糖果梦通用密钥。由调用方传入，Skill 内不保存、不写死。 |
+| `keywords` | string[]/string/null | 否 | 关键词过滤。支持字符串数组或单个字符串；为空表示不过滤标题。多个关键词使用 OR 逻辑。 |
+| `categories` | string[]/string/null | 否 | 糖果指数分类过滤。也兼容 `category`、`type`、`platformCategory`、`分类` 这些入参名；为空表示查询全部分类。 |
+| `limit` | integer/null | 否 | 最大返回条数。默认传 `null` 表示不限制；接口也兼容不传或 `0` 表示不限制；负数非法。智能体不要自行添加、推断或缩小为具体数字，只有用户明确指定数量或确认限制条数后才可以传具体数字。 |
+
+`categories` 可选值：
+
+```text
+all, dubang, alltalk, technology, finance, entertainment, car, sports, game, livelihood, ai, sideline, education
+```
+
+常见别名：
+
+| 分类值 | 含义 / 常见别名 |
+| --- | --- |
+| `all` | 综合、糖果梦综合 |
+| `dubang` | 毒榜、糖果梦毒榜 |
+| `alltalk` | 争议榜、争议、糖果梦争议榜 |
+| `technology` | 科技、tech、糖果梦科技 |
+| `finance` | 财经、糖果梦财经 |
+| `entertainment` | 娱乐、糖果梦娱乐 |
+| `car` | 汽车、糖果梦汽车 |
+| `sports` | 体育、sport、糖果梦体育 |
+| `game` | 游戏、糖果梦游戏 |
+| `livelihood` | 民生、糖果梦民生 |
+| `ai` | AI、人工智能、糖果梦AI |
+| `sideline` | 副业、fuye、糖果梦副业 |
+| `education` | 教育、jiaoyu、糖果梦教育 |
+
+未知分类会被忽略；没有有效分类时，接口会查询全部糖果指数分类。
+
+返回示例：
+
+```json
+{
+  "code": 200,
+  "message": "请求成功",
+  "data": {
+    "query": {
+      "mode": "INDEX",
+      "keywords": ["AI"],
+      "permission": "SEARCH",
+      "limit": null,
+      "categories": ["all", "technology", "ai"]
+    },
+    "summary": {
+      "total": 120,
+      "returned": 120,
+      "truncated": false
+    },
+    "items": [
+      {
+        "title": "热点标题",
+        "source": "糖果指数",
+        "category": "糖果梦科技",
+        "rootCategory": "糖果梦",
+        "publishedAt": "2026-05-08 12:00:00",
+        "hotScore": 9820
+      }
+    ]
+  }
+}
+```
+
+糖果指数返回字段说明：
+
+| 字段 | 说明 |
+| --- | --- |
+| `data.query.mode` | 固定为 `INDEX`，表示糖果指数查询。 |
+| `data.query.keywords` | 本次实际使用的关键词数组。 |
+| `data.query.permission` | 本次接口校验的权限，通常为 `SEARCH`。 |
+| `data.query.limit` | 本次请求的最大返回条数。`null` 或 `0` 表示不限制。 |
+| `data.query.categories` | 本次实际使用的糖果指数分类。 |
+| `data.summary` | 结果统计信息，包括 `total`、`returned`、`truncated`。 |
+| `data.items` | 糖果指数结果数组。 |
+| `data.items[].title` | 热点标题。 |
+| `data.items[].source` | 固定为 `糖果指数`。 |
+| `data.items[].category` | 糖果指数分类名称。 |
+| `data.items[].rootCategory` | 根分类，通常为 `糖果梦`。 |
+| `data.items[].publishedAt` | 该指数榜单的更新时间。 |
+| `data.items[].hotScore` | 糖果指数热度值，数值越大表示热度越高。 |
+
 ## 常见错误
 
 | message | 说明 |
@@ -172,6 +281,7 @@ POST https://trendapi.tgmeng.com/api/skill/search
 | `limit must be greater than or equal to 0` | `limit` 是负数。 |
 | `rootCategories must be string array or string` | `rootCategories` 不是字符串数组或字符串。 |
 | `rootCategories unsupported, available values: 新闻, 羊毛, 媒体, 电视, 生活, 社区, 财经, 股讯, 体育, 科技, 设计, 影音, 游戏, 健康, 教育, 期货, AI, 副业` | `rootCategories` 包含不支持的分类。 |
+| `category must be string array or string` | 糖果指数分类参数不是字符串数组或字符串。 |
 | `TODAY/HISTORY mode keywords empty error` | `TODAY` 或 `HISTORY` 模式下没有传有效关键词。 |
 | `startTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd` | `startTime` 格式错误。 |
 | `endTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd` | `endTime` 格式错误。 |
@@ -190,7 +300,7 @@ POST https://trendapi.tgmeng.com/api/skill/search
   "keywords": ["AI"],
   "mode": "REALTIME",
   "rootCategories": ["AI"],
-  "limit": 50
+  "limit": null
 }
 ```
 
@@ -203,7 +313,8 @@ POST https://trendapi.tgmeng.com/api/skill/search
   "mode": "TODAY",
   "rootCategories": ["科技"],
   "startTime": "2026-05-05 00:00:00",
-  "endTime": "2026-05-05 12:00:00"
+  "endTime": "2026-05-05 12:00:00",
+  "limit": null
 }
 ```
 
@@ -217,11 +328,37 @@ POST https://trendapi.tgmeng.com/api/skill/search
   "rootCategories": ["AI"],
   "startTime": "2026-04-01",
   "endTime": "2026-04-30",
-  "limit": 50
+  "limit": null
 }
 ```
 
 ## 给智能体的调用建议
+
+### 能力选择
+
+当用户明确说“糖果指数”“指数榜”“热度指数”“AI 汇总榜”“综合热度”时，优先使用糖果指数接口 `/api/skill/index`。
+
+当用户明确说“热搜原始数据”“新闻热点”“查某关键词”“查今天或历史”“按时间窗口检索”时，优先使用热榜数据搜索接口 `/api/skill/search`。
+
+当用户需求不明确时，例如只说“查热点”“看看热榜”“最近有什么热搜”，智能体应先询问用户要使用哪种能力：
+
+1. 热榜数据搜索：查询原始新闻/热点数据，支持实时、今日、历史、关键词、根分类和时间窗口。
+2. 糖果指数查询：查询糖果指数榜单，返回标题、分类和 `hotScore`，适合按综合热度查看热点。
+
+用户确认后再调用对应接口。
+
+### limit 规则
+
+智能体不要自行添加、推断或缩小为具体数字。如果用户没有明确要求返回条数，默认传 `"limit": null` 表示不限制，不要自行改成具体数字。
+
+如果智能体因为性能、可读性、上下文长度或摘要需要想添加 `limit`，必须先询问用户并获得确认。
+
+只有在以下情况才可以把 `limit` 设为具体数字：
+
+- 用户明确指定数量，例如“前 10 条”“返回 20 条”“只要 5 条”；
+- 或用户确认了智能体关于限制条数的追问。
+
+### 热榜数据搜索
 
 智能体调用前应先做本地参数校验：
 
@@ -249,4 +386,3 @@ POST https://trendapi.tgmeng.com/api/skill/search
 - `SKILL.md`：Skill 主入口说明。
 - `references/openapi.yaml`：OpenAPI 3.1 标准定义。
 - `references/api-contract.md`：详细接口契约。
-
