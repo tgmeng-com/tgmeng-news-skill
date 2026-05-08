@@ -1,0 +1,21 @@
+{
+  "name": "tgmeng-news-skill",
+  "latestVersion": "1.1.1",
+  "updatedAt": "2026-05-08",
+  "changelogUrl": "https://github.com/tgmeng-com/tgmeng-news-skill/blob/main/CHANGELOG.md",
+  "releaseNotes": [
+    "新增糖果指数查询接口 /api/skill/index。",
+    "新增热榜数据搜索和糖果指数查询的能力选择规则。",
+    "当用户需求不明确时，智能体应先询问用户要使用哪种能力。",
+    "新增 limit 默认传 null 的规则，智能体不得自行设置具体数字。",
+    "明确热榜数据搜索结果按更新时间从最新到最久排列，不按热点热度权重排序。"
+  ],
+  "agentUsageTips": [
+    "用户明确说糖果指数、指数榜、热度指数、AI 汇总榜或综合热度时，优先使用 /api/skill/index。",
+    "用户明确说原始热搜、新闻热点、历史、关键词或时间窗口检索时，优先使用 /api/skill/search。",
+    "用户只说查热点、看看热榜、最近有什么热搜时，先解释两种能力并询问用户选择。",
+    "如果用户没有明确要求返回条数，默认传 \"limit\": null；不要自行改成具体数字。",
+    "汇总结果时注意保护 license，不要在日志、页面或回复中暴露完整密钥。"
+  ],
+  "breakingChanges": []
+}

@@ -4,6 +4,17 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
 
+## [1.1.1] - 2026-05-08
+
+### Added
+
+- 新增 `skill-version.json` 远程版本清单，用于智能体执行前检查本地 Skill 是否落后。
+
+### Changed
+
+- `SKILL.md` frontmatter 新增 `version`、`updated_at`、`update_check_url`，并新增执行前版本检查规则。
+- `README.md` 新增版本检查说明，解释智能体如何比较本地版本和远程 `latestVersion`，以及如何展示新版功能和使用建议。
+
 ## [1.1.0] - 2026-05-08
 
 ### Added

@@ -1,5 +1,8 @@
 ---
 name: tgmeng-news-skill
+version: 1.1.1
+updated_at: 2026-05-08
+update_check_url: https://raw.githubusercontent.com/tgmeng-com/tgmeng-news-skill/main/skill-version.json
 description: Search Tgmeng in-site news, hotspot data, and Tgmeng Index data through the Tgmeng Skill APIs. Use when an agent needs to query current, today, or historical Tgmeng news/hotspot records, or AI-generated Tgmeng Index lists, with a user-provided license and explicit user intent.
 ---
 
@@ -13,6 +16,47 @@ This skill exposes two capabilities:
 - Tgmeng Index search: `POST https://trendapi.tgmeng.com/api/skill/index`
 
 ## Agent Behavior Rules
+
+### Version Check
+
+Before using this skill, check whether the local skill should be updated when network access is available.
+
+Local version source:
+
+- Read `version` from this `SKILL.md` frontmatter.
+- If local `version` is missing, treat the local skill as outdated.
+
+Remote version source:
+
+- Fetch the JSON manifest from `update_check_url`.
+- Compare remote `latestVersion` with local `version`.
+
+If local version is missing or remote `latestVersion` is newer than local `version`:
+
+1. Do not call the business API immediately.
+2. Tell the user the local skill version is missing or outdated.
+3. Show the local version, remote `latestVersion`, `updatedAt`, `releaseNotes`, `agentUsageTips`, and `breakingChanges` when present.
+4. Ask whether the user wants to update the skill before continuing.
+5. If the user declines, continue with the local skill.
+
+If the version check fails because network access is unavailable or the remote manifest cannot be read, briefly tell the user the version check failed and continue with the local skill unless the user explicitly asked to update first.
+
+Use this update reminder format:
+
+```text
+I detected that the local tgmeng-news-skill version is {localVersion}. The latest version is {latestVersion}, updated at {updatedAt}.
+
+New features:
+- ...
+
+Agent usage tips:
+- ...
+
+Breaking changes:
+- ...
+
+Would you like to update the skill before I continue? If not, I can continue with the current local version.
+```
 
 ### Capability Selection
 

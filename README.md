@@ -25,6 +25,7 @@ POST https://trendapi.tgmeng.com/api/skill/index
 ```text
 .
 ├── SKILL.md
+├── skill-version.json
 ├── agents/
 │   └── openai.yaml
 └── references/
@@ -37,9 +38,28 @@ POST https://trendapi.tgmeng.com/api/skill/index
 | 文件 | 作用 |
 | --- | --- |
 | `SKILL.md` | Skill 主说明文件，给 Codex/智能体读取使用。 |
+| `skill-version.json` | 远程版本清单，给智能体在执行 Skill 前检查本地版本是否落后，并展示新版功能和使用建议。 |
 | `agents/openai.yaml` | Skill 的展示信息和默认调用提示。 |
 | `references/openapi.yaml` | OpenAPI 3.1 标准接口契约，适合工具系统读取。 |
 | `references/api-contract.md` | 中文/人类可读的详细 API 契约说明。 |
+
+## 版本检查
+
+`SKILL.md` 的 frontmatter 中声明了当前本地版本和远程版本清单地址：
+
+```yaml
+version: 1.1.1
+updated_at: 2026-05-08
+update_check_url: https://raw.githubusercontent.com/tgmeng-com/tgmeng-news-skill/main/skill-version.json
+```
+
+智能体每次执行 Skill 前，如果网络可用，应读取 `update_check_url` 指向的 `skill-version.json`，比较本地 `version` 和远程 `latestVersion`。
+
+- 如果本地版本不存在，视为需要更新。
+- 如果远程 `latestVersion` 大于本地 `version`，提醒用户本地 Skill 已落后。
+- 提醒时展示远程版本、更新时间、`releaseNotes`、`agentUsageTips` 和 `breakingChanges`。
+- 提醒后询问用户是否先更新 Skill；如果用户不更新，再继续使用本地版本。
+- 如果版本检查因网络不可用或远程清单读取失败而失败，简短说明检查失败，然后继续使用本地版本，除非用户明确要求先更新。
 
 ## 请求参数
 
