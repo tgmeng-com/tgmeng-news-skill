@@ -55,6 +55,16 @@ update_check_url: https://raw.githubusercontent.com/tgmeng-com/tgmeng-news-skill
 
 智能体每次执行 Skill 前，如果网络可用，应读取 `update_check_url` 指向的 `skill-version.json`，比较本地 `version` 和远程 `latestVersion`。
 
+## 安装目录与缓存
+
+为避免部分 agent 框架出现 `skills_list` 可见但 `skill_view` 偶发 `Skill not found` 的缓存问题，安装目录建议固定为：
+
+```text
+tgmeng-news-skill
+```
+
+目录名应与 `SKILL.md` 的 `name: tgmeng-news-skill`、`skill-version.json` 的 `name` 保持一致。更新 Skill 后，如果 agent 仍读取旧索引，请刷新/重启 agent 的 skill 缓存后再调用。
+
 - 如果本地版本不存在，视为需要更新。
 - 如果远程 `latestVersion` 大于本地 `version`，提醒用户本地 Skill 已落后。
 - 提醒时展示远程版本、更新时间、`releaseNotes`、`agentUsageTips` 和 `breakingChanges`。
