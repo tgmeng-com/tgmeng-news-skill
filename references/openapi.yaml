@@ -16,6 +16,7 @@ paths:
         REALTIME requires SEARCH permission. TODAY and HISTORY require SKILLHISTORY permission.
         TODAY and HISTORY require at least one non-blank keyword.
         Set limit to null by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit. Set offset to 0 by default; increase it only when continuing pagination. Set distinct to false by default; use true only when the user asks to reduce duplicate titles or repeated reposts.
+        Self-healing retries should fix only the invalid field: use POST, JSON content type, a JSON object body, integer non-negative limit/offset, boolean distinct, and string-array keywords for raw search.
       requestBody:
         required: true
         content:
@@ -80,6 +81,7 @@ paths:
         Use this endpoint when the user clearly asks for 糖果指数, index lists, 热度指数, AI-generated ranking, or 综合热度.
         If the user request is ambiguous between raw hotspot search and Tgmeng Index search, ask the user which capability they want before calling an API.
         Set limit to null by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit. Set offset to 0 by default; increase it only when continuing pagination. Set distinct to false by default; use true only when the user asks to reduce duplicate titles or repeated reposts.
+        Self-healing retries should fix only the invalid field: use POST, JSON content type, a JSON object body, integer non-negative limit/offset, and boolean distinct.
       requestBody:
         required: true
         content:
@@ -151,12 +153,14 @@ components:
             - integer
             - 'null'
           minimum: 0
+          maximum: 2147483647
           description: Maximum number of returned items. null means no limit by default. Agents must not set this field to a concrete number unless the user explicitly requested a count or confirmed a limit.
         offset:
           type:
             - integer
             - 'null'
           minimum: 0
+          maximum: 2147483647
           default: 0
           description: Result offset. Default is 0. Use with a user-approved limit to fetch later results, for example limit 100 and offset 100 starts from the 101st matched item.
         distinct:
@@ -258,12 +262,14 @@ components:
             - integer
             - 'null'
           minimum: 0
+          maximum: 2147483647
           description: Maximum number of returned items. null means no limit by default. Agents must not set this field to a concrete number unless the user explicitly requested a count or confirmed a limit.
         offset:
           type:
             - integer
             - 'null'
           minimum: 0
+          maximum: 2147483647
           default: 0
           description: Result offset. Default is 0. Use with a user-approved limit to fetch later results, for example limit 100 and offset 100 starts from the 101st matched item.
         distinct:

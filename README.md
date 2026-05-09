@@ -353,14 +353,19 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
 
 | message | 说明 |
 | --- | --- |
+| `Request method GET is not supported, please use POST` | 请求方法错误，应改用 `POST`。 |
+| `Content-Type must be application/json` | 请求体必须以 JSON 发送，并使用 `Content-Type: application/json`。 |
+| `request body must be json object` | 请求体必须是 JSON 对象，不能是数组、字符串或其他类型。 |
 | `license empty error` | 密钥为空。 |
 | `mode empty error` | 查询模式为空。 |
 | `参数mode不支持，请传[REALTIME, TODAY, HISTORY]` | `mode` 不在允许值中。 |
 | `参数keywords格式不正确，请传字符串数组` | `keywords` 不是字符串数组。 |
 | `limit must be integer` | `limit` 不是整数。 |
 | `limit must be greater than or equal to 0` | `limit` 是负数。 |
+| `limit is too large` | `limit` 超过最大整数范围。 |
 | `offset must be integer` | `offset` 不是整数。 |
 | `offset must be greater than or equal to 0` | `offset` 是负数。 |
+| `offset is too large` | `offset` 超过最大整数范围。 |
 | `distinct must be boolean` | `distinct` 不是布尔值。 |
 | `rootCategories must be string array or string` | `rootCategories` 不是字符串数组或字符串。 |
 | `rootCategories unsupported, available values: 新闻, 羊毛, 媒体, 电视, 生活, 社区, 财经, 股讯, 体育, 科技, 设计, 影音, 游戏, 健康, 教育, 期货, AI, 副业` | `rootCategories` 包含不支持的分类。 |
@@ -454,6 +459,10 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
 ### distinct 去重规则
 
 默认传 `"distinct": false`。当用户希望减少重复标题、通稿转载或 token 浪费时，可以传 `"distinct": true`。接口会在分页前按标题去重，保留当前排序中最靠前的一条；`data.summary.rawTotal` 是去重前数量，`data.summary.total` 是去重后数量。
+
+### 错误自愈建议
+
+智能体遇到参数错误时，只修正错误字段并在安全时重试一次：方法错误改用 `POST`；Content-Type 错误改为 `application/json`；请求体形状错误改为 JSON 对象；`limit`、`offset` 改为非负整数或 `null`；`distinct` 改为布尔值；热榜数据搜索的 `keywords` 改为字符串数组。
 
 ### 热榜数据搜索
 

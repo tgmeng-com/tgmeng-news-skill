@@ -288,14 +288,19 @@ The APIs usually return HTTP 200 with a non-success envelope for business errors
 Common parameter errors:
 
 - `request body empty error`: request body is missing.
+- `request body must be json object`: request body is not a JSON object. Use an object such as `{ "license": "...", "keywords": [] }`.
+- `Request method GET is not supported, please use POST`: the endpoint was called with GET or another unsupported method. Retry with POST.
+- `Content-Type must be application/json`: the request body was not sent as JSON. Retry with `Content-Type: application/json`.
 - `license empty error`: `license` is missing or blank.
 - `mode empty error`: `mode` is missing or null for raw hotspot search.
 - `参数mode不支持，请传[REALTIME, TODAY, HISTORY]`: `mode` is not one of the allowed raw search enum values.
 - `参数keywords格式不正确，请传字符串数组`: `keywords` is not a valid JSON array or accepted string form.
 - `limit must be integer`: `limit` is not an integer.
 - `limit must be greater than or equal to 0`: `limit` is negative.
+- `limit is too large`: `limit` is greater than the maximum supported integer.
 - `offset must be integer`: `offset` is not an integer.
 - `offset must be greater than or equal to 0`: `offset` is negative.
+- `offset is too large`: `offset` is greater than the maximum supported integer.
 - `distinct must be boolean`: `distinct` is not a boolean-compatible value.
 - `rootCategories must be string array or string`: `rootCategories` is neither a JSON string array nor a string.
 - `rootCategories unsupported, available values: 新闻, 羊毛, 媒体, 电视, 生活, 社区, 财经, 股讯, 体育, 科技, 设计, 影音, 游戏, 健康, 教育, 期货, AI, 副业`: `rootCategories` contains an unsupported value.
@@ -323,6 +328,8 @@ Common authorization errors:
 9. Call the chosen endpoint with JSON content type.
 10. Read `code`, `message`, and `data` from the response envelope.
 11. Summarize results with source titles and URLs when available. Do not expose the license.
+
+If the API returns a parameter error, fix only the invalid field and retry once when safe: use POST for method errors, `Content-Type: application/json` for media-type errors, a JSON object for body-shape errors, integer non-negative values for `limit` and `offset`, boolean values for `distinct`, and a string array for raw search `keywords`.
 
 Diagnostics may record request metadata such as IP address, User-Agent, request path, error message, and license. Do not include the full license in agent logs or user-facing output.
 

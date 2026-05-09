@@ -283,6 +283,9 @@ Common parameter errors:
 
 | Message | Meaning |
 | --- | --- |
+| `Request method GET is not supported, please use POST` | Unsupported HTTP method. Retry with POST. |
+| `Content-Type must be application/json` | Request body must be sent as JSON with `Content-Type: application/json`. |
+| `request body must be json object` | Request body must be a JSON object, not an array, string, or other JSON value. |
 | `request body empty error` | Request body is missing. |
 | `license empty error` | `license` is missing or blank. |
 | `mode empty error` | Raw search `mode` is missing or null. |
@@ -291,8 +294,10 @@ Common parameter errors:
 | `TODAY/HISTORY mode keywords empty error` | Raw search `mode = TODAY` or `mode = HISTORY` but keywords is empty or blank-only. |
 | `limit must be integer` | `limit` is not an integer. |
 | `limit must be greater than or equal to 0` | `limit` is negative. |
+| `limit is too large` | `limit` is greater than the maximum supported integer. |
 | `offset must be integer` | `offset` is not an integer. |
 | `offset must be greater than or equal to 0` | `offset` is negative. |
+| `offset is too large` | `offset` is greater than the maximum supported integer. |
 | `distinct must be boolean` | `distinct` is not a boolean-compatible value. |
 | `rootCategories must be string array or string` | `rootCategories` is neither a JSON string array nor a string. |
 | `rootCategories unsupported, available values: 新闻, 羊毛, 媒体, 电视, 生活, 社区, 财经, 股讯, 体育, 科技, 设计, 影音, 游戏, 健康, 教育, 期货, AI, 副业` | `rootCategories` contains an unsupported value. |
@@ -319,6 +324,7 @@ Common permission errors:
 - Set `limit` to `null` by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit.
 - Set `offset` to `0` by default. Use a larger `offset` only when continuing a paginated request.
 - Set `distinct` to `false` by default. Use `distinct: true` only when the user asks to reduce duplicate titles, repeated wire copy, reposts, or token waste from duplicated results.
+- For self-healing retries, fix only the invalid field and retry once when safe: use POST for method errors, JSON content type for media-type errors, a JSON object for body-shape errors, integer non-negative values for `limit` and `offset`, boolean values for `distinct`, and a string array for raw search `keywords`.
 
 ## Examples
 
