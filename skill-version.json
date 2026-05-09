@@ -1,6 +1,6 @@
 {
   "name": "tgmeng-news-skill",
-  "latestVersion": "1.1.2",
+  "latestVersion": "2.0.0",
   "updatedAt": "2026-05-10",
   "changelogUrl": "https://github.com/tgmeng-com/tgmeng-news-skill/blob/main/CHANGELOG.md",
   "releaseNotes": [
@@ -10,6 +10,7 @@
     "补充 黄金+伊朗、黄金-伊朗、伊朗+导弹-足球 等调用示例。",
     "热榜数据搜索和糖果指数查询文档新增 limit + offset 分页说明，响应 summary.hasMore 表示是否还有后续结果。",
     "热榜数据搜索和糖果指数查询文档新增 distinct 按标题去重说明，响应 summary.rawTotal 和 summary.duplicatesRemoved 可用于查看去重效果。",
+    "补充方法、Content-Type、JSON 请求体、limit、offset、distinct 等参数错误提示，以及智能体安全重试建议。",
     "补充安装目录与缓存刷新提示，建议目录名保持为 tgmeng-news-skill。"
   ],
   "agentUsageTips": [

@@ -1,6 +1,6 @@
 ---
 name: tgmeng-news-skill
-version: 1.1.2
+version: 2.0.0
 updated_at: 2026-05-10
 update_check_url: https://raw.githubusercontent.com/tgmeng-com/tgmeng-news-skill/main/skill-version.json
 description: Search Tgmeng in-site news, hotspot data, and Tgmeng Index data through the Tgmeng Skill APIs. Use when an agent needs to query current, today, or historical Tgmeng news/hotspot records, or AI-generated Tgmeng Index lists, with a user-provided license and explicit user intent.

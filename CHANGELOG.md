@@ -4,7 +4,7 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
 
-## [1.1.2] - 2026-05-10
+## [2.0.0] - 2026-05-10
 
 ### Changed
 
@@ -12,6 +12,7 @@
 - 补充 `黄金+伊朗`、`黄金-伊朗`、`伊朗+导弹-足球` 等关键词表达式示例。
 - 文档同步热榜数据搜索和糖果指数查询的 `limit + offset` 分页能力，并说明 `summary.hasMore` 与兼容字段 `summary.truncated`。
 - 文档同步热榜数据搜索和糖果指数查询的 `distinct` 按标题去重能力，并说明 `summary.rawTotal` 与 `summary.duplicatesRemoved`。
+- 文档补充方法、Content-Type、JSON 请求体、`limit`、`offset`、`distinct` 等参数错误提示，以及智能体安全重试建议。
 - README 增加安装目录与缓存刷新提示，建议目录名保持为 `tgmeng-news-skill`，与 Skill name 一致。
 ## [1.1.1] - 2026-05-08
 

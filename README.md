@@ -48,7 +48,7 @@ POST https://trendapi.tgmeng.com/api/skill/index
 `SKILL.md` 的 frontmatter 中声明了当前本地版本和远程版本清单地址：
 
 ```yaml
-version: 1.1.1
+version: 2.0.0
 updated_at: 2026-05-08
 update_check_url: https://raw.githubusercontent.com/tgmeng-com/tgmeng-news-skill/main/skill-version.json
 ```
