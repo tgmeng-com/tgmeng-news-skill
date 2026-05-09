@@ -82,7 +82,7 @@ update_check_url: https://raw.githubusercontent.com/tgmeng-com/tgmeng-news-skill
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `license` | string | 是 | 糖果梦通用密钥。由调用方传入，Skill 内不保存、不写死。没有密钥时，可前往 `https://wechat.tgmeng.com` 获取。 |
-| `keywords` | string[] | 是 | 关键词数组，使用 OR 逻辑模糊匹配标题。`REALTIME` 可以为空数组，`TODAY` 和 `HISTORY` 必须至少包含一个非空关键词。 |
+| `keywords` | string[] | 是 | 关键词数组。多个关键词项之间保持 OR；单个关键词项内支持 `+`、`＋`、`&`、`＆` 表示必须包含，`-`、`－`、`!`、`！` 表示排除。`REALTIME` 可以为空数组，`TODAY` 和 `HISTORY` 必须至少包含一个非空关键词。 |
 | `mode` | enum | 是 | 查询模式，只能是 `REALTIME`、`TODAY`、`HISTORY`。 |
 | `startTime` | string/null | 否 | `TODAY` 和 `HISTORY` 的时间窗口开始时间，`REALTIME` 会忽略。支持 `yyyy-MM-dd HH:mm:ss` 或 `yyyy-MM-dd`，仅日期会补为当天 `00:00:00`。 |
 | `endTime` | string/null | 否 | `TODAY` 和 `HISTORY` 的时间窗口结束时间，`REALTIME` 会忽略。支持 `yyyy-MM-dd HH:mm:ss` 或 `yyyy-MM-dd`，仅日期会补为当天 `23:59:59`。 |
@@ -114,6 +114,16 @@ update_check_url: https://raw.githubusercontent.com/tgmeng-com/tgmeng-news-skill
 可以用 `rootCategories` 缩小结果范围。根分类过滤和关键词匹配是 AND 关系；传多个根分类值时是 OR 关系。
 
 为了兼容不同调用方，接口也接受单个字符串形式，并兼容 `rootCategory`、`platformCategoryRoot` 这些字段名。
+
+## 关键词表达式
+
+热榜数据搜索和糖果指数查询的 `keywords` 都兼容旧 OR 逻辑，同时支持单个关键词项内的轻量表达式：
+
+- 多个关键词项之间仍然是 OR，例如 `["伊朗", "股票"]` 表示标题包含“伊朗”或“股票”。
+- `+`、`＋`、`&`、`＆` 表示必须包含，例如 `黄金+伊朗` 表示标题同时包含“黄金”和“伊朗”。
+- `-`、`－`、`!`、`！` 表示排除，例如 `黄金-伊朗` 表示标题包含“黄金”且不包含“伊朗”。
+- 示例：`伊朗+导弹-足球` 表示标题同时包含“伊朗”和“导弹”，并排除“足球”。
+- 示例：`股票＆黄金！AI` 表示标题同时包含“股票”和“黄金”，并排除“AI”。
 
 ## 时间窗口
 
@@ -208,7 +218,7 @@ POST https://trendapi.tgmeng.com/api/skill/index
 | 字段 | 类型 | 必填 | 说明 |
 | --- | --- | --- | --- |
 | `license` | string | 是 | 糖果梦通用密钥。由调用方传入，Skill 内不保存、不写死。 |
-| `keywords` | string[]/string/null | 否 | 关键词过滤。支持字符串数组或单个字符串；为空表示不过滤标题。多个关键词使用 OR 逻辑。 |
+| `keywords` | string[]/string/null | 否 | 关键词过滤。支持字符串数组或单个字符串；为空表示不过滤标题。多个关键词项之间保持 OR；单个关键词项内支持 `+`、`＋`、`&`、`＆` 表示必须包含，`-`、`－`、`!`、`！` 表示排除。 |
 | `categories` | string[]/string/null | 否 | 糖果指数分类过滤。也兼容 `category`、`type`、`platformCategory`、`分类` 这些入参名；为空表示查询全部分类。 |
 | `limit` | integer/null | 否 | 最大返回条数。默认传 `null` 表示不限制；接口也兼容不传或 `0` 表示不限制；负数非法。智能体不要自行添加、推断或缩小为具体数字，只有用户明确指定数量或确认限制条数后才可以传具体数字。 |
 

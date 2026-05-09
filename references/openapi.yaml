@@ -131,7 +131,7 @@ components:
           description: Tgmeng universal license code (糖果梦通用密钥). If absent, obtain one at https://wechat.tgmeng.com. Must not be logged or exposed.
         keywords:
           type: array
-          description: Keyword list for OR-style fuzzy title matching. TODAY and HISTORY require at least one non-blank item.
+          description: Keyword list. Array items use OR matching. Inside one item, +, ＋, &, ＆ mean required include; -, －, !, ！ mean exclude. Examples: 黄金+伊朗, 黄金-伊朗, 伊朗+导弹-足球. TODAY and HISTORY require at least one non-blank item.
           items:
             type: string
         mode:
@@ -221,7 +221,7 @@ components:
                 type: string
             - type: string
             - type: 'null'
-          description: Optional keyword filter for hotspot titles. Empty or omitted means no title filtering. Multiple keywords use OR matching.
+          description: Optional keyword filter for hotspot titles. Empty or omitted means no title filtering. Array items use OR matching. Inside one item, +, ＋, &, ＆ mean required include; -, －, !, ！ mean exclude. Examples: 黄金+伊朗, 黄金-伊朗, 伊朗+导弹-足球.
         categories:
           oneOf:
             - type: array

@@ -52,7 +52,7 @@ Use the fixed production endpoint `https://trendapi.tgmeng.com/api/skill/search`
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `license` | string | Yes | Tgmeng universal license code (糖果梦通用密钥) used for authorization. If the user does not have one, direct them to `https://wechat.tgmeng.com`. Never log or reveal it. |
-| `keywords` | string[] | Yes | Keyword array. Items are trimmed by the API. Blank items are ignored. `TODAY` and `HISTORY` require at least one non-blank keyword. |
+| `keywords` | string[] | Yes | Keyword array. Items are trimmed by the API. Blank items are ignored. Multiple keyword items use OR matching. Inside one item, `+`, `＋`, `&`, `＆` mean required include; `-`, `－`, `!`, `！` mean exclude. `TODAY` and `HISTORY` require at least one non-blank keyword. |
 | `mode` | enum | Yes | One of `REALTIME`, `TODAY`, `HISTORY`. Case-sensitive. |
 | `startTime` | string/null | No | Inclusive time window start for `TODAY` and `HISTORY`. Ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`; date-only values are normalized to `00:00:00`. |
 | `endTime` | string/null | No | Inclusive time window end for `TODAY` and `HISTORY`. Ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`; date-only values are normalized to `23:59:59`. |
@@ -83,7 +83,7 @@ If only `startTime` is provided, the API searches from that time to now. If only
 
 ### Matching
 
-Keywords use OR-style fuzzy title matching. A result matches when its title contains at least one keyword.
+Keywords keep backward-compatible OR-style fuzzy matching between array items. A single keyword item can use lightweight expressions: `+`, `＋`, `&`, `＆` require included terms, while `-`, `－`, `!`, `！` exclude terms. Examples: `黄金+伊朗` means title contains both `黄金` and `伊朗`; `黄金-伊朗` means title contains `黄金` and does not contain `伊朗`; `伊朗+导弹-足球` means title contains `伊朗` and `导弹` and excludes `足球`.
 
 Root category filters are AND-style with keyword matching. If `rootCategories` is provided, the result must match one of those root categories.
 
@@ -170,7 +170,7 @@ Use the fixed production endpoint `https://trendapi.tgmeng.com/api/skill/index`.
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `license` | string | Yes | Tgmeng universal license code (糖果梦通用密钥) used for authorization. Never log or reveal it. |
-| `keywords` | string[]/string/null | No | Keyword filter for hotspot titles. Empty or omitted means no title filtering. Multiple keywords use OR matching. |
+| `keywords` | string[]/string/null | No | Keyword filter for hotspot titles. Empty or omitted means no title filtering. Multiple keyword items use OR matching. Inside one item, `+`, `＋`, `&`, `＆` mean required include; `-`, `－`, `!`, `！` mean exclude. Examples: `黄金+伊朗`, `黄金-伊朗`, `伊朗+导弹-足球`. |
 | `categories` | string[]/string/null | No | Tgmeng Index category filter. The API also accepts `category`, `type`, `platformCategory`, or `分类` as aliases. Empty or omitted means all Tgmeng Index categories. |
 | `limit` | integer/null | No | Maximum returned items. Use `null` by default to mean no limit. The API also accepts omitted or `0` as no limit. Negative values are invalid. Do not set a concrete number unless the user explicitly requested a count or confirmed a limit. |
 

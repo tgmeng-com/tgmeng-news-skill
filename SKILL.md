@@ -1,7 +1,7 @@
 ---
 name: tgmeng-news-skill
-version: 1.1.1
-updated_at: 2026-05-08
+version: 1.1.2
+updated_at: 2026-05-10
 update_check_url: https://raw.githubusercontent.com/tgmeng-com/tgmeng-news-skill/main/skill-version.json
 description: Search Tgmeng in-site news, hotspot data, and Tgmeng Index data through the Tgmeng Skill APIs. Use when an agent needs to query current, today, or historical Tgmeng news/hotspot records, or AI-generated Tgmeng Index lists, with a user-provided license and explicit user intent.
 ---
@@ -109,7 +109,7 @@ Send JSON with these business parameters:
 Parameter contract:
 
 - `license`: string. Required. Tgmeng universal license code (糖果梦通用密钥). If the user does not have one, direct them to https://wechat.tgmeng.com to obtain it. Do not log, expose, or hard-code it.
-- `keywords`: string array. Required by schema. Empty arrays are allowed only for `REALTIME`; `TODAY` and `HISTORY` require at least one non-blank keyword.
+- `keywords`: string array. Required by schema. Empty arrays are allowed only for `REALTIME`; `TODAY` and `HISTORY` require at least one non-blank keyword. Multiple keyword items use OR matching. Inside one keyword item, `+`, `＋`, `&`, `＆` mean required include, and `-`, `－`, `!`, `！` mean exclude. Example: `伊朗+导弹-足球` means the title must contain `伊朗` and `导弹`, and must not contain `足球`.
 - `mode`: enum string. Required. Must be exactly one of `REALTIME`, `TODAY`, or `HISTORY`.
 - `startTime`: string or null. Optional. Inclusive time window start for `TODAY` and `HISTORY`; ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`. Date-only values are normalized to `00:00:00`.
 - `endTime`: string or null. Optional. Inclusive time window end for `TODAY` and `HISTORY`; ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`. Date-only values are normalized to `23:59:59`.
@@ -130,7 +130,7 @@ Mode behavior:
 
 Licenses have `SEARCH` permission for `REALTIME` by default. If the user needs `TODAY` or `HISTORY`, tell them to contact the administrator, explain the use case, and request `SKILLHISTORY` permission.
 
-Keyword matching is OR-style fuzzy title matching: an item is returned when its title contains any keyword.
+Keyword matching keeps backward-compatible OR-style matching between keyword array items. A single keyword item may use lightweight expressions: `+`, `＋`, `&`, `＆` require included terms, while `-`, `－`, `!`, `！` exclude terms. For example, `伊朗+导弹-足球` means the title must contain `伊朗` and `导弹`, and must not contain `足球`; `股票＆黄金！AI` means the title must contain `股票` and `黄金`, and must not contain `AI`.
 Root category filtering is AND-style with keyword matching: an item must match the requested `rootCategories` if the filter is provided. Multiple root category values use OR matching.
 
 For non-realtime modes, if only `startTime` is provided, the API searches from that time to now. If only `endTime` is provided, the API uses the mode's default start time and the provided end time. `startTime` must be before or equal to `endTime`.
@@ -196,7 +196,7 @@ Send JSON with these business parameters:
 Parameter contract:
 
 - `license`: string. Required. Tgmeng universal license code (糖果梦通用密钥). Do not log, expose, or hard-code it.
-- `keywords`: string array, string, or null. Optional. Filters hotspot titles. Empty or omitted means no title filtering. Multiple keywords use OR matching.
+- `keywords`: string array, string, or null. Optional. Filters hotspot titles. Empty or omitted means no title filtering. Multiple keyword items use OR matching. Inside one keyword item, `+`, `＋`, `&`, `＆` mean required include, and `-`, `－`, `!`, `！` mean exclude. Examples: `黄金+伊朗`, `黄金-伊朗`, `伊朗+导弹-足球`.
 - `categories`: string array, string, or null. Optional. Filters Tgmeng Index categories. The API also accepts `category`, `type`, `platformCategory`, or `分类` as aliases. Empty or omitted means all Tgmeng Index categories.
 - `limit`: integer or null. Optional. Maximum number of returned items. Use `null` by default to mean no limit. The API also accepts omitted or `0` as no limit. Negative values are invalid. Do not set a concrete number unless the user explicitly requested a count or confirmed a limit.
 
