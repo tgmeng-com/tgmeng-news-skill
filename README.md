@@ -83,7 +83,8 @@ tgmeng-news-skill
   "startTime": null,
   "endTime": null,
   "rootCategories": ["科技"],
-  "limit": null
+  "limit": null,
+  "offset": 0
 }
 ```
 
@@ -98,6 +99,7 @@ tgmeng-news-skill
 | `endTime` | string/null | 否 | `TODAY` 和 `HISTORY` 的时间窗口结束时间，`REALTIME` 会忽略。支持 `yyyy-MM-dd HH:mm:ss` 或 `yyyy-MM-dd`，仅日期会补为当天 `23:59:59`。 |
 | `rootCategories` | string[]/string/null | 否 | 按根分类过滤，精确匹配返回结果里的 `items[].rootCategory`。不传或为空表示不过滤。 |
 | `limit` | integer/null | 否 | 最大返回条数。默认传 `null` 表示不限制；接口也兼容不传或 `0` 表示不限制；负数非法。智能体不要自行添加、推断或缩小为具体数字，只有用户明确指定数量或确认限制条数后才可以传具体数字。 |
+| `offset` | integer/null | 否 | 结果偏移量，默认 `0`。配合用户确认过的 `limit` 获取下一批数据，例如 `limit: 100, offset: 100` 表示从第 101 条命中结果开始返回；负数非法。 |
 
 `rootCategories` 可选值：
 
@@ -158,6 +160,7 @@ tgmeng-news-skill
       "keywords": ["AI", "OpenAI"],
       "permission": "SEARCH",
       "limit": null,
+      "offset": 0,
       "startTime": null,
       "endTime": null,
       "rootCategories": ["科技"]
@@ -165,6 +168,9 @@ tgmeng-news-skill
     "summary": {
       "total": 120,
       "returned": 120,
+      "limit": null,
+      "offset": 0,
+      "hasMore": false,
       "truncated": false
     },
     "items": [
@@ -190,8 +196,14 @@ tgmeng-news-skill
 | `code` | 业务状态码，`200` 表示成功。 |
 | `message` | 返回信息或错误提示。 |
 | `data` | 智能体友好的搜索结果对象，包含 `query`、`summary`、`items`。 |
-| `data.query` | 本次查询信息，包括 `mode`、`keywords`、`permission`、`limit`、`startTime`、`endTime`、`rootCategories`。 |
-| `data.summary` | 结果统计信息，包括 `total`、`returned`、`truncated`。 |
+| `data.query` | 本次查询信息，包括 `mode`、`keywords`、`permission`、`limit`、`offset`、`startTime`、`endTime`、`rootCategories`。 |
+| `data.summary` | 结果统计信息，包括 `total`、`returned`、`limit`、`offset`、`hasMore`、`truncated`。 |
+| `data.summary.total` | 分页前的命中总数。 |
+| `data.summary.returned` | 本次实际返回条数。 |
+| `data.summary.limit` | 本次请求的最大返回条数，`null` 或 `0` 表示不限制。 |
+| `data.summary.offset` | 本次请求的结果偏移量。 |
+| `data.summary.hasMore` | 是否还有后续结果；为 `true` 时可保持同样条件并增大 `offset` 继续获取。 |
+| `data.summary.truncated` | 兼容旧字段，含义与 `hasMore` 一致。 |
 | `data.items` | 搜索结果数组，按更新时间从最新到最久排列；越靠前的结果越新，而不是按照热点热度权重排序，方便智能体知道结果的排序逻辑。 |
 | `data.items[].title` | 新闻或热点标题。 |
 | `data.items[].url` | 来源链接，部分数据可能为空。 |
@@ -219,7 +231,8 @@ POST https://trendapi.tgmeng.com/api/skill/index
   "license": "USER_LICENSE_CODE",
   "keywords": ["AI"],
   "categories": ["all", "technology", "ai"],
-  "limit": null
+  "limit": null,
+  "offset": 0
 }
 ```
 
@@ -231,6 +244,7 @@ POST https://trendapi.tgmeng.com/api/skill/index
 | `keywords` | string[]/string/null | 否 | 关键词过滤。支持字符串数组或单个字符串；为空表示不过滤标题。多个关键词项之间保持 OR；单个关键词项内支持 `+`、`＋`、`&`、`＆` 表示必须包含，`-`、`－`、`!`、`！` 表示排除。 |
 | `categories` | string[]/string/null | 否 | 糖果指数分类过滤。也兼容 `category`、`type`、`platformCategory`、`分类` 这些入参名；为空表示查询全部分类。 |
 | `limit` | integer/null | 否 | 最大返回条数。默认传 `null` 表示不限制；接口也兼容不传或 `0` 表示不限制；负数非法。智能体不要自行添加、推断或缩小为具体数字，只有用户明确指定数量或确认限制条数后才可以传具体数字。 |
+| `offset` | integer/null | 否 | 结果偏移量，默认 `0`。配合用户确认过的 `limit` 获取下一批数据，例如 `limit: 100, offset: 100` 表示从第 101 条命中结果开始返回；负数非法。 |
 
 `categories` 可选值：
 
@@ -270,11 +284,15 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
       "keywords": ["AI"],
       "permission": "SEARCH",
       "limit": null,
+      "offset": 0,
       "categories": ["all", "technology", "ai"]
     },
     "summary": {
       "total": 120,
       "returned": 120,
+      "limit": null,
+      "offset": 0,
+      "hasMore": false,
       "truncated": false
     },
     "items": [
@@ -299,8 +317,15 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
 | `data.query.keywords` | 本次实际使用的关键词数组。 |
 | `data.query.permission` | 本次接口校验的权限，通常为 `SEARCH`。 |
 | `data.query.limit` | 本次请求的最大返回条数。`null` 或 `0` 表示不限制。 |
+| `data.query.offset` | 本次请求的结果偏移量，默认 `0`。 |
 | `data.query.categories` | 本次实际使用的糖果指数分类。 |
-| `data.summary` | 结果统计信息，包括 `total`、`returned`、`truncated`。 |
+| `data.summary` | 结果统计信息，包括 `total`、`returned`、`limit`、`offset`、`hasMore`、`truncated`。 |
+| `data.summary.total` | 分页前的命中总数。 |
+| `data.summary.returned` | 本次实际返回条数。 |
+| `data.summary.limit` | 本次请求的最大返回条数，`null` 或 `0` 表示不限制。 |
+| `data.summary.offset` | 本次请求的结果偏移量。 |
+| `data.summary.hasMore` | 是否还有后续结果；为 `true` 时可保持同样条件并增大 `offset` 继续获取。 |
+| `data.summary.truncated` | 兼容旧字段，含义与 `hasMore` 一致。 |
 | `data.items` | 糖果指数结果数组。 |
 | `data.items[].title` | 热点标题。 |
 | `data.items[].source` | 固定为 `糖果指数`。 |
@@ -319,6 +344,8 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
 | `参数keywords格式不正确，请传字符串数组` | `keywords` 不是字符串数组。 |
 | `limit must be integer` | `limit` 不是整数。 |
 | `limit must be greater than or equal to 0` | `limit` 是负数。 |
+| `offset must be integer` | `offset` 不是整数。 |
+| `offset must be greater than or equal to 0` | `offset` 是负数。 |
 | `rootCategories must be string array or string` | `rootCategories` 不是字符串数组或字符串。 |
 | `rootCategories unsupported, available values: 新闻, 羊毛, 媒体, 电视, 生活, 社区, 财经, 股讯, 体育, 科技, 设计, 影音, 游戏, 健康, 教育, 期货, AI, 副业` | `rootCategories` 包含不支持的分类。 |
 | `category must be string array or string` | 糖果指数分类参数不是字符串数组或字符串。 |
@@ -340,7 +367,8 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
   "keywords": ["AI"],
   "mode": "REALTIME",
   "rootCategories": ["AI"],
-  "limit": null
+  "limit": null,
+  "offset": 0
 }
 ```
 
@@ -354,7 +382,8 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
   "rootCategories": ["科技"],
   "startTime": "2026-05-05 00:00:00",
   "endTime": "2026-05-05 12:00:00",
-  "limit": null
+  "limit": null,
+  "offset": 0
 }
 ```
 
@@ -368,7 +397,8 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
   "rootCategories": ["AI"],
   "startTime": "2026-04-01",
   "endTime": "2026-04-30",
-  "limit": null
+  "limit": null,
+  "offset": 0
 }
 ```
 
@@ -397,6 +427,10 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
 
 - 用户明确指定数量，例如“前 10 条”“返回 20 条”“只要 5 条”；
 - 或用户确认了智能体关于限制条数的追问。
+
+### offset 分页规则
+
+默认传 `"offset": 0`。当响应里的 `data.summary.hasMore` 为 `true`，并且用户需要继续获取剩余结果时，保持其他查询条件不变，把 `offset` 增加本次 `returned` 或已确认的 `limit` 后再次调用。
 
 ### 热榜数据搜索
 

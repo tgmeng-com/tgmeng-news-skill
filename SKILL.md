@@ -102,7 +102,8 @@ Send JSON with these business parameters:
   "startTime": null,
   "endTime": null,
   "rootCategories": ["科技"],
-  "limit": null
+  "limit": null,
+  "offset": 0
 }
 ```
 
@@ -115,6 +116,7 @@ Parameter contract:
 - `endTime`: string or null. Optional. Inclusive time window end for `TODAY` and `HISTORY`; ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`. Date-only values are normalized to `23:59:59`.
 - `rootCategories`: string array or string. Optional. Filter by root category, matching the `items[].rootCategory` field exactly. Empty or omitted means all root categories.
 - `limit`: integer or null. Optional. Maximum number of returned items. Use `null` by default to mean no limit. The API also accepts omitted or `0` as no limit. Negative values are invalid. Do not set a concrete number unless the user explicitly requested a count or confirmed a limit.
+- `offset`: integer or null. Optional. Result offset. Use `0` by default. Use it with a user-approved `limit` to fetch the next page, for example `limit: 100, offset: 100` starts from the 101st matched item. Negative values are invalid.
 
 Available `rootCategories` values:
 
@@ -147,6 +149,7 @@ For non-realtime modes, if only `startTime` is provided, the API searches from t
       "keywords": ["AI", "OpenAI"],
       "permission": "SEARCH",
       "limit": null,
+      "offset": 0,
       "startTime": null,
       "endTime": null,
       "rootCategories": ["科技"]
@@ -154,6 +157,9 @@ For non-realtime modes, if only `startTime` is provided, the API searches from t
     "summary": {
       "total": 120,
       "returned": 120,
+      "limit": null,
+      "offset": 0,
+      "hasMore": false,
       "truncated": false
     },
     "items": [
@@ -172,7 +178,7 @@ For non-realtime modes, if only `startTime` is provided, the API searches from t
 }
 ```
 
-Treat `data.items` as the result list. Items are ordered by update time from newest to oldest; earlier items in the array are newer, rather than being sorted by hotspot popularity weight. This helps agents understand the result ordering logic. Use `data.query` to understand what was searched and `data.summary` to detect truncation. Some item fields may be absent or null depending on source and mode.
+Treat `data.items` as the result list. Items are ordered by update time from newest to oldest; earlier items in the array are newer, rather than being sorted by hotspot popularity weight. This helps agents understand the result ordering logic. Use `data.query` to understand what was searched and `data.summary.hasMore` to detect whether more results are available. `data.summary.truncated` is kept for compatibility and has the same meaning as `hasMore`. If `hasMore` is true, keep the same filters and increase `offset` by the current `returned` count or by the requested `limit` to fetch the next page. Some item fields may be absent or null depending on source and mode.
 
 ## Tgmeng Index Search
 
@@ -189,7 +195,8 @@ Send JSON with these business parameters:
   "license": "USER_LICENSE_CODE",
   "keywords": ["AI"],
   "categories": ["all", "technology", "ai"],
-  "limit": null
+  "limit": null,
+  "offset": 0
 }
 ```
 
@@ -199,6 +206,7 @@ Parameter contract:
 - `keywords`: string array, string, or null. Optional. Filters hotspot titles. Empty or omitted means no title filtering. Multiple keyword items use OR matching. Inside one keyword item, `+`, `＋`, `&`, `＆` mean required include, and `-`, `－`, `!`, `！` mean exclude. Examples: `黄金+伊朗`, `黄金-伊朗`, `伊朗+导弹-足球`.
 - `categories`: string array, string, or null. Optional. Filters Tgmeng Index categories. The API also accepts `category`, `type`, `platformCategory`, or `分类` as aliases. Empty or omitted means all Tgmeng Index categories.
 - `limit`: integer or null. Optional. Maximum number of returned items. Use `null` by default to mean no limit. The API also accepts omitted or `0` as no limit. Negative values are invalid. Do not set a concrete number unless the user explicitly requested a count or confirmed a limit.
+- `offset`: integer or null. Optional. Result offset. Use `0` by default. Use it with a user-approved `limit` to fetch the next page, for example `limit: 100, offset: 100` starts from the 101st matched item. Negative values are invalid.
 
 Available Tgmeng Index category values:
 
@@ -236,11 +244,15 @@ Unknown categories are ignored. If no valid category remains, the API queries al
       "keywords": ["AI"],
       "permission": "SEARCH",
       "limit": null,
+      "offset": 0,
       "categories": ["all", "technology", "ai"]
     },
     "summary": {
       "total": 120,
       "returned": 120,
+      "limit": null,
+      "offset": 0,
+      "hasMore": false,
       "truncated": false
     },
     "items": [
@@ -257,7 +269,7 @@ Unknown categories are ignored. If no valid category remains, the API queries al
 }
 ```
 
-Treat `data.items` as the Tgmeng Index result list. `hotScore` is the Tgmeng Index heat value; larger values mean higher heat. Use `data.summary.truncated` to detect whether an explicit user-approved limit truncated the result set.
+Treat `data.items` as the Tgmeng Index result list. `hotScore` is the Tgmeng Index heat value; larger values mean higher heat. Use `data.summary.hasMore` to detect whether more results are available. `data.summary.truncated` is kept for compatibility and has the same meaning as `hasMore`.
 
 ## Error Handling
 
@@ -272,6 +284,8 @@ Common parameter errors:
 - `参数keywords格式不正确，请传字符串数组`: `keywords` is not a valid JSON array or accepted string form.
 - `limit must be integer`: `limit` is not an integer.
 - `limit must be greater than or equal to 0`: `limit` is negative.
+- `offset must be integer`: `offset` is not an integer.
+- `offset must be greater than or equal to 0`: `offset` is negative.
 - `rootCategories must be string array or string`: `rootCategories` is neither a JSON string array nor a string.
 - `rootCategories unsupported, available values: 新闻, 羊毛, 媒体, 电视, 生活, 社区, 财经, 股讯, 体育, 科技, 设计, 影音, 游戏, 健康, 教育, 期货, AI, 副业`: `rootCategories` contains an unsupported value.
 - `category must be string array or string`: Tgmeng Index category input is neither a JSON string array nor a string.
@@ -293,9 +307,10 @@ Common authorization errors:
 4. Set `limit` to `null` by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit.
 5. For raw `TODAY` and `HISTORY`, require at least one non-blank keyword.
 6. For raw `TODAY` or `HISTORY`, pass `startTime` and `endTime` when the user asks for a precise period.
-7. Call the chosen endpoint with JSON content type.
-8. Read `code`, `message`, and `data` from the response envelope.
-9. Summarize results with source titles and URLs when available. Do not expose the license.
+7. Set `offset` to `0` by default. If `data.summary.hasMore` is true and the user wants more, call the same endpoint again with a larger `offset`.
+8. Call the chosen endpoint with JSON content type.
+9. Read `code`, `message`, and `data` from the response envelope.
+10. Summarize results with source titles and URLs when available. Do not expose the license.
 
 Diagnostics may record request metadata such as IP address, User-Agent, request path, error message, and license. Do not include the full license in agent logs or user-facing output.
 

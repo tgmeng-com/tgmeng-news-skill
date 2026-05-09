@@ -43,7 +43,8 @@ Use the fixed production endpoint `https://trendapi.tgmeng.com/api/skill/search`
   "startTime": null,
   "endTime": null,
   "rootCategories": ["科技"],
-  "limit": null
+  "limit": null,
+  "offset": 0
 }
 ```
 
@@ -58,6 +59,7 @@ Use the fixed production endpoint `https://trendapi.tgmeng.com/api/skill/search`
 | `endTime` | string/null | No | Inclusive time window end for `TODAY` and `HISTORY`. Ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`; date-only values are normalized to `23:59:59`. |
 | `rootCategories` | string[]/string/null | No | Filter by root category, matching `items[].rootCategory` exactly. Empty or omitted means all root categories. |
 | `limit` | integer/null | No | Maximum returned items. Use `null` by default to mean no limit. The API also accepts omitted or `0` as no limit. Negative values are invalid. Do not set a concrete number unless the user explicitly requested a count or confirmed a limit. |
+| `offset` | integer/null | No | Result offset. Default is `0`. Use with a user-approved `limit` to fetch later results, for example `limit: 100, offset: 100` starts from the 101st matched item. Negative values are invalid. |
 
 Available `rootCategories` values:
 
@@ -99,6 +101,7 @@ Root category filters are AND-style with keyword matching. If `rootCategories` i
       "keywords": ["AI", "OpenAI"],
       "permission": "SEARCH",
       "limit": null,
+      "offset": 0,
       "startTime": null,
       "endTime": null,
       "rootCategories": ["科技"]
@@ -106,6 +109,9 @@ Root category filters are AND-style with keyword matching. If `rootCategories` i
     "summary": {
       "total": 120,
       "returned": 120,
+      "limit": null,
+      "offset": 0,
+      "hasMore": false,
       "truncated": false
     },
     "items": []
@@ -113,7 +119,7 @@ Root category filters are AND-style with keyword matching. If `rootCategories` i
 }
 ```
 
-`code = 200` means success. For all other codes, treat the call as failed and display or summarize `message`. On success, read results from `data.items`, query metadata from `data.query`, and truncation status from `data.summary`. `data.items` is ordered by update time from newest to oldest, so earlier items are newer, rather than being sorted by hotspot popularity weight. This helps agents understand the result ordering logic.
+`code = 200` means success. For all other codes, treat the call as failed and display or summarize `message`. On success, read results from `data.items`, query metadata from `data.query`, and pagination status from `data.summary`. `data.items` is ordered by update time from newest to oldest, so earlier items are newer, rather than being sorted by hotspot popularity weight. This helps agents understand the result ordering logic. If `data.summary.hasMore` is true, keep the same filters and increase `offset` by the current `returned` count or by the requested `limit` to fetch the next page.
 
 ### Raw Search Data Fields
 
@@ -123,12 +129,16 @@ Root category filters are AND-style with keyword matching. If `rootCategories` i
 | `data.query.keywords` | string[] | Sanitized keyword array used by the request. |
 | `data.query.permission` | string | Permission checked for this mode: `SEARCH` or `SKILLHISTORY`. |
 | `data.query.limit` | integer/null | Requested limit. `null` or `0` means no limit. |
+| `data.query.offset` | integer | Requested result offset. |
 | `data.query.startTime` | string/null | Normalized time-window start used by the query. |
 | `data.query.endTime` | string/null | Normalized time-window end used by the query. |
 | `data.query.rootCategories` | string[]/null | Root category filters used by the query. |
-| `data.summary.total` | integer | Matched item count before limit. |
-| `data.summary.returned` | integer | Returned item count after limit. |
-| `data.summary.truncated` | boolean | Whether limit truncated the result set. |
+| `data.summary.total` | integer | Matched item count before pagination. |
+| `data.summary.returned` | integer | Returned item count after `offset` and `limit`. |
+| `data.summary.limit` | integer/null | Requested limit. `null` or `0` means no limit. |
+| `data.summary.offset` | integer | Requested result offset. |
+| `data.summary.hasMore` | boolean | Whether more matched results remain after this response. |
+| `data.summary.truncated` | boolean | Compatibility field with the same meaning as `hasMore`. |
 
 ### Raw Search Item Fields
 
@@ -161,7 +171,8 @@ Use the fixed production endpoint `https://trendapi.tgmeng.com/api/skill/index`.
   "license": "USER_LICENSE_CODE",
   "keywords": ["AI"],
   "categories": ["all", "technology", "ai"],
-  "limit": null
+  "limit": null,
+  "offset": 0
 }
 ```
 
@@ -173,6 +184,7 @@ Use the fixed production endpoint `https://trendapi.tgmeng.com/api/skill/index`.
 | `keywords` | string[]/string/null | No | Keyword filter for hotspot titles. Empty or omitted means no title filtering. Multiple keyword items use OR matching. Inside one item, `+`, `＋`, `&`, `＆` mean required include; `-`, `－`, `!`, `！` mean exclude. Examples: `黄金+伊朗`, `黄金-伊朗`, `伊朗+导弹-足球`. |
 | `categories` | string[]/string/null | No | Tgmeng Index category filter. The API also accepts `category`, `type`, `platformCategory`, or `分类` as aliases. Empty or omitted means all Tgmeng Index categories. |
 | `limit` | integer/null | No | Maximum returned items. Use `null` by default to mean no limit. The API also accepts omitted or `0` as no limit. Negative values are invalid. Do not set a concrete number unless the user explicitly requested a count or confirmed a limit. |
+| `offset` | integer/null | No | Result offset. Default is `0`. Use with a user-approved `limit` to fetch later results, for example `limit: 100, offset: 100` starts from the 101st matched item. Negative values are invalid. |
 
 Available Tgmeng Index category values:
 
@@ -194,11 +206,15 @@ Unknown categories are ignored. If no valid category remains, the API queries al
       "keywords": ["AI"],
       "permission": "SEARCH",
       "limit": null,
+      "offset": 0,
       "categories": ["all", "technology", "ai"]
     },
     "summary": {
       "total": 120,
       "returned": 120,
+      "limit": null,
+      "offset": 0,
+      "hasMore": false,
       "truncated": false
     },
     "items": [
@@ -215,7 +231,7 @@ Unknown categories are ignored. If no valid category remains, the API queries al
 }
 ```
 
-`hotScore` is the Tgmeng Index heat value. Larger values mean higher heat.
+`hotScore` is the Tgmeng Index heat value. Larger values mean higher heat. If `data.summary.hasMore` is true, keep the same filters and increase `offset` by the current `returned` count or by the requested `limit` to fetch the next page.
 
 ### Tgmeng Index Data Fields
 
@@ -225,10 +241,14 @@ Unknown categories are ignored. If no valid category remains, the API queries al
 | `data.query.keywords` | string[] | Sanitized keyword array used by the request. |
 | `data.query.permission` | string | Permission checked for this endpoint, usually `SEARCH`. |
 | `data.query.limit` | integer/null | Requested limit. `null` or `0` means no limit. |
+| `data.query.offset` | integer | Requested result offset. |
 | `data.query.categories` | string[] | Tgmeng Index categories used by the request. |
-| `data.summary.total` | integer | Matched item count before limit. |
-| `data.summary.returned` | integer | Returned item count after limit. |
-| `data.summary.truncated` | boolean | Whether limit truncated the result set. |
+| `data.summary.total` | integer | Matched item count before pagination. |
+| `data.summary.returned` | integer | Returned item count after `offset` and `limit`. |
+| `data.summary.limit` | integer/null | Requested limit. `null` or `0` means no limit. |
+| `data.summary.offset` | integer | Requested result offset. |
+| `data.summary.hasMore` | boolean | Whether more matched results remain after this response. |
+| `data.summary.truncated` | boolean | Compatibility field with the same meaning as `hasMore`. |
 
 ### Tgmeng Index Item Fields
 
@@ -255,6 +275,8 @@ Common parameter errors:
 | `TODAY/HISTORY mode keywords empty error` | Raw search `mode = TODAY` or `mode = HISTORY` but keywords is empty or blank-only. |
 | `limit must be integer` | `limit` is not an integer. |
 | `limit must be greater than or equal to 0` | `limit` is negative. |
+| `offset must be integer` | `offset` is not an integer. |
+| `offset must be greater than or equal to 0` | `offset` is negative. |
 | `rootCategories must be string array or string` | `rootCategories` is neither a JSON string array nor a string. |
 | `rootCategories unsupported, available values: 新闻, 羊毛, 媒体, 电视, 生活, 社区, 财经, 股讯, 体育, 科技, 设计, 影音, 游戏, 健康, 教育, 期货, AI, 副业` | `rootCategories` contains an unsupported value. |
 | `category must be string array or string` | Tgmeng Index category input is neither a JSON string array nor a string. |
@@ -278,6 +300,7 @@ Common permission errors:
 - Do not retry aggressively on authorization failures.
 - Do not call raw `TODAY` or `HISTORY` without a keyword.
 - Set `limit` to `null` by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit.
+- Set `offset` to `0` by default. Use a larger `offset` only when continuing a paginated request.
 
 ## Examples
 
@@ -289,7 +312,8 @@ Common permission errors:
   "keywords": ["AI"],
   "mode": "REALTIME",
   "rootCategories": ["AI"],
-  "limit": null
+  "limit": null,
+  "offset": 0
 }
 ```
 
@@ -303,7 +327,8 @@ Common permission errors:
   "rootCategories": ["科技"],
   "startTime": "2026-05-05 00:00:00",
   "endTime": "2026-05-05 12:00:00",
-  "limit": null
+  "limit": null,
+  "offset": 0
 }
 ```
 
@@ -314,6 +339,7 @@ Common permission errors:
   "license": "USER_LICENSE_CODE",
   "keywords": ["AI"],
   "categories": ["all", "technology", "ai"],
-  "limit": null
+  "limit": null,
+  "offset": 0
 }
 ```
