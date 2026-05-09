@@ -84,7 +84,8 @@ tgmeng-news-skill
   "endTime": null,
   "rootCategories": ["科技"],
   "limit": null,
-  "offset": 0
+  "offset": 0,
+  "distinct": false
 }
 ```
 
@@ -100,6 +101,7 @@ tgmeng-news-skill
 | `rootCategories` | string[]/string/null | 否 | 按根分类过滤，精确匹配返回结果里的 `items[].rootCategory`。不传或为空表示不过滤。 |
 | `limit` | integer/null | 否 | 最大返回条数。默认传 `null` 表示不限制；接口也兼容不传或 `0` 表示不限制；负数非法。智能体不要自行添加、推断或缩小为具体数字，只有用户明确指定数量或确认限制条数后才可以传具体数字。 |
 | `offset` | integer/null | 否 | 结果偏移量，默认 `0`。配合用户确认过的 `limit` 获取下一批数据，例如 `limit: 100, offset: 100` 表示从第 101 条命中结果开始返回；负数非法。 |
+| `distinct` | boolean/null | 否 | 是否按标题去重，默认 `false`。为 `true` 时，在关键词、分类、时间过滤之后、分页之前按规范化标题去重，保留当前排序中最靠前的一条；不使用 `simHash`。 |
 
 `rootCategories` 可选值：
 
@@ -161,15 +163,18 @@ tgmeng-news-skill
       "permission": "SEARCH",
       "limit": null,
       "offset": 0,
+      "distinct": false,
       "startTime": null,
       "endTime": null,
       "rootCategories": ["科技"]
     },
     "summary": {
       "total": 120,
+      "rawTotal": 120,
       "returned": 120,
       "limit": null,
       "offset": 0,
+      "duplicatesRemoved": 0,
       "hasMore": false,
       "truncated": false
     },
@@ -196,12 +201,14 @@ tgmeng-news-skill
 | `code` | 业务状态码，`200` 表示成功。 |
 | `message` | 返回信息或错误提示。 |
 | `data` | 智能体友好的搜索结果对象，包含 `query`、`summary`、`items`。 |
-| `data.query` | 本次查询信息，包括 `mode`、`keywords`、`permission`、`limit`、`offset`、`startTime`、`endTime`、`rootCategories`。 |
-| `data.summary` | 结果统计信息，包括 `total`、`returned`、`limit`、`offset`、`hasMore`、`truncated`。 |
-| `data.summary.total` | 分页前的命中总数。 |
+| `data.query` | 本次查询信息，包括 `mode`、`keywords`、`permission`、`limit`、`offset`、`distinct`、`startTime`、`endTime`、`rootCategories`。 |
+| `data.summary` | 结果统计信息，包括 `total`、`rawTotal`、`returned`、`limit`、`offset`、`duplicatesRemoved`、`hasMore`、`truncated`。 |
+| `data.summary.total` | 当前返回策略下的命中总数。`distinct=true` 时是去重后的总数；否则等于 `rawTotal`。 |
+| `data.summary.rawTotal` | 按关键词、分类和时间过滤后的原始命中总数，去重前统计。 |
 | `data.summary.returned` | 本次实际返回条数。 |
 | `data.summary.limit` | 本次请求的最大返回条数，`null` 或 `0` 表示不限制。 |
 | `data.summary.offset` | 本次请求的结果偏移量。 |
+| `data.summary.duplicatesRemoved` | `distinct=true` 时去掉的重复标题数量；未开启去重时为 `0`。 |
 | `data.summary.hasMore` | 是否还有后续结果；为 `true` 时可保持同样条件并增大 `offset` 继续获取。 |
 | `data.summary.truncated` | 兼容旧字段，含义与 `hasMore` 一致。 |
 | `data.items` | 搜索结果数组，按更新时间从最新到最久排列；越靠前的结果越新，而不是按照热点热度权重排序，方便智能体知道结果的排序逻辑。 |
@@ -232,7 +239,8 @@ POST https://trendapi.tgmeng.com/api/skill/index
   "keywords": ["AI"],
   "categories": ["all", "technology", "ai"],
   "limit": null,
-  "offset": 0
+  "offset": 0,
+  "distinct": false
 }
 ```
 
@@ -245,6 +253,7 @@ POST https://trendapi.tgmeng.com/api/skill/index
 | `categories` | string[]/string/null | 否 | 糖果指数分类过滤。也兼容 `category`、`type`、`platformCategory`、`分类` 这些入参名；为空表示查询全部分类。 |
 | `limit` | integer/null | 否 | 最大返回条数。默认传 `null` 表示不限制；接口也兼容不传或 `0` 表示不限制；负数非法。智能体不要自行添加、推断或缩小为具体数字，只有用户明确指定数量或确认限制条数后才可以传具体数字。 |
 | `offset` | integer/null | 否 | 结果偏移量，默认 `0`。配合用户确认过的 `limit` 获取下一批数据，例如 `limit: 100, offset: 100` 表示从第 101 条命中结果开始返回；负数非法。 |
+| `distinct` | boolean/null | 否 | 是否按标题去重，默认 `false`。为 `true` 时，在关键词、分类过滤之后、分页之前按规范化标题去重，保留当前排序中最靠前的一条；不使用 `simHash`。 |
 
 `categories` 可选值：
 
@@ -285,13 +294,16 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
       "permission": "SEARCH",
       "limit": null,
       "offset": 0,
+      "distinct": false,
       "categories": ["all", "technology", "ai"]
     },
     "summary": {
       "total": 120,
+      "rawTotal": 120,
       "returned": 120,
       "limit": null,
       "offset": 0,
+      "duplicatesRemoved": 0,
       "hasMore": false,
       "truncated": false
     },
@@ -318,12 +330,15 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
 | `data.query.permission` | 本次接口校验的权限，通常为 `SEARCH`。 |
 | `data.query.limit` | 本次请求的最大返回条数。`null` 或 `0` 表示不限制。 |
 | `data.query.offset` | 本次请求的结果偏移量，默认 `0`。 |
+| `data.query.distinct` | 是否按标题去重。 |
 | `data.query.categories` | 本次实际使用的糖果指数分类。 |
-| `data.summary` | 结果统计信息，包括 `total`、`returned`、`limit`、`offset`、`hasMore`、`truncated`。 |
-| `data.summary.total` | 分页前的命中总数。 |
+| `data.summary` | 结果统计信息，包括 `total`、`rawTotal`、`returned`、`limit`、`offset`、`duplicatesRemoved`、`hasMore`、`truncated`。 |
+| `data.summary.total` | 当前返回策略下的命中总数。`distinct=true` 时是去重后的总数；否则等于 `rawTotal`。 |
+| `data.summary.rawTotal` | 按关键词和分类过滤后的原始命中总数，去重前统计。 |
 | `data.summary.returned` | 本次实际返回条数。 |
 | `data.summary.limit` | 本次请求的最大返回条数，`null` 或 `0` 表示不限制。 |
 | `data.summary.offset` | 本次请求的结果偏移量。 |
+| `data.summary.duplicatesRemoved` | `distinct=true` 时去掉的重复标题数量；未开启去重时为 `0`。 |
 | `data.summary.hasMore` | 是否还有后续结果；为 `true` 时可保持同样条件并增大 `offset` 继续获取。 |
 | `data.summary.truncated` | 兼容旧字段，含义与 `hasMore` 一致。 |
 | `data.items` | 糖果指数结果数组。 |
@@ -346,6 +361,7 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
 | `limit must be greater than or equal to 0` | `limit` 是负数。 |
 | `offset must be integer` | `offset` 不是整数。 |
 | `offset must be greater than or equal to 0` | `offset` 是负数。 |
+| `distinct must be boolean` | `distinct` 不是布尔值。 |
 | `rootCategories must be string array or string` | `rootCategories` 不是字符串数组或字符串。 |
 | `rootCategories unsupported, available values: 新闻, 羊毛, 媒体, 电视, 生活, 社区, 财经, 股讯, 体育, 科技, 设计, 影音, 游戏, 健康, 教育, 期货, AI, 副业` | `rootCategories` 包含不支持的分类。 |
 | `category must be string array or string` | 糖果指数分类参数不是字符串数组或字符串。 |
@@ -368,7 +384,8 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
   "mode": "REALTIME",
   "rootCategories": ["AI"],
   "limit": null,
-  "offset": 0
+  "offset": 0,
+  "distinct": false
 }
 ```
 
@@ -383,7 +400,8 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
   "startTime": "2026-05-05 00:00:00",
   "endTime": "2026-05-05 12:00:00",
   "limit": null,
-  "offset": 0
+  "offset": 0,
+  "distinct": false
 }
 ```
 
@@ -398,7 +416,8 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
   "startTime": "2026-04-01",
   "endTime": "2026-04-30",
   "limit": null,
-  "offset": 0
+  "offset": 0,
+  "distinct": false
 }
 ```
 
@@ -431,6 +450,10 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
 ### offset 分页规则
 
 默认传 `"offset": 0`。当响应里的 `data.summary.hasMore` 为 `true`，并且用户需要继续获取剩余结果时，保持其他查询条件不变，把 `offset` 增加本次 `returned` 或已确认的 `limit` 后再次调用。
+
+### distinct 去重规则
+
+默认传 `"distinct": false`。当用户希望减少重复标题、通稿转载或 token 浪费时，可以传 `"distinct": true`。接口会在分页前按标题去重，保留当前排序中最靠前的一条；`data.summary.rawTotal` 是去重前数量，`data.summary.total` 是去重后数量。
 
 ### 热榜数据搜索
 

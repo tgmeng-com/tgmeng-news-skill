@@ -2,7 +2,7 @@ openapi: 3.1.0
 info:
   title: Tgmeng News Skill APIs
   version: 1.3.0
-  description: Search Tgmeng in-site news, hotspot data, and AI-generated Tgmeng Index lists by license, keyword array, mode, category filters, optional time window, optional user-approved result limit, and offset pagination.
+  description: Search Tgmeng in-site news, hotspot data, and AI-generated Tgmeng Index lists by license, keyword array, mode, category filters, optional time window, optional user-approved result limit, offset pagination, and optional title deduplication.
 servers:
   - url: https://trendapi.tgmeng.com
     description: Fixed production API server
@@ -15,7 +15,7 @@ paths:
         Search current, today, or historical Tgmeng in-site news and hotspot records.
         REALTIME requires SEARCH permission. TODAY and HISTORY require SKILLHISTORY permission.
         TODAY and HISTORY require at least one non-blank keyword.
-        Set limit to null by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit. Set offset to 0 by default; increase it only when continuing pagination.
+        Set limit to null by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit. Set offset to 0 by default; increase it only when continuing pagination. Set distinct to false by default; use true only when the user asks to reduce duplicate titles or repeated reposts.
       requestBody:
         required: true
         content:
@@ -35,6 +35,7 @@ paths:
                     - AI
                   limit: null
                   offset: 0
+                  distinct: false
               today:
                 summary: Today search with default limit null
                 value:
@@ -48,6 +49,7 @@ paths:
                   endTime: '2026-05-05 12:00:00'
                   limit: null
                   offset: 0
+                  distinct: false
               historyWithUserApprovedLimit:
                 summary: Historical search with user-approved limit
                 value:
@@ -61,6 +63,7 @@ paths:
                   endTime: '2026-04-30'
                   limit: 20
                   offset: 0
+                  distinct: true
       responses:
         '200':
           description: Standard Tgmeng response envelope. Business errors may also return HTTP 200; inspect code and message.
@@ -76,7 +79,7 @@ paths:
         Search cached AI-generated Tgmeng Index lists. The endpoint returns indexed hotspot titles, categories, update time, and hotScore.
         Use this endpoint when the user clearly asks for 糖果指数, index lists, 热度指数, AI-generated ranking, or 综合热度.
         If the user request is ambiguous between raw hotspot search and Tgmeng Index search, ask the user which capability they want before calling an API.
-        Set limit to null by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit. Set offset to 0 by default; increase it only when continuing pagination.
+        Set limit to null by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit. Set offset to 0 by default; increase it only when continuing pagination. Set distinct to false by default; use true only when the user asks to reduce duplicate titles or repeated reposts.
       requestBody:
         required: true
         content:
@@ -96,6 +99,7 @@ paths:
                     - ai
                   limit: null
                   offset: 0
+                  distinct: false
               indexSearchWithUserApprovedLimit:
                 summary: Tgmeng Index search with user-approved limit
                 value:
@@ -106,6 +110,7 @@ paths:
                     - ai
                   limit: 10
                   offset: 0
+                  distinct: true
       responses:
         '200':
           description: Standard Tgmeng response envelope. Business errors may also return HTTP 200; inspect code and message.
@@ -154,6 +159,12 @@ components:
           minimum: 0
           default: 0
           description: Result offset. Default is 0. Use with a user-approved limit to fetch later results, for example limit 100 and offset 100 starts from the 101st matched item.
+        distinct:
+          type:
+            - boolean
+            - 'null'
+          default: false
+          description: Whether to deduplicate by normalized title. Default is false. When true, deduplication runs after keyword/category/time filters and before pagination, keeps the first item in existing sort order, and does not use simHash.
         startTime:
           type:
             - string
@@ -255,6 +266,12 @@ components:
           minimum: 0
           default: 0
           description: Result offset. Default is 0. Use with a user-approved limit to fetch later results, for example limit 100 and offset 100 starts from the 101st matched item.
+        distinct:
+          type:
+            - boolean
+            - 'null'
+          default: false
+          description: Whether to deduplicate by normalized title. Default is false. When true, deduplication runs after keyword/category filters and before pagination, keeps the first item in existing sort order, and does not use simHash.
     SkillSearchResponse:
       type: object
       required:
@@ -309,6 +326,9 @@ components:
         offset:
           type: integer
           description: Requested result offset.
+        distinct:
+          type: boolean
+          description: Whether title deduplication was enabled.
         startTime:
           type:
             - string
@@ -331,7 +351,10 @@ components:
       properties:
         total:
           type: integer
-          description: Total matched items before pagination is applied.
+          description: Matched item count after optional title deduplication and before pagination.
+        rawTotal:
+          type: integer
+          description: Matched item count before optional title deduplication.
         returned:
           type: integer
           description: Number of items returned after offset and limit are applied.
@@ -343,6 +366,9 @@ components:
         offset:
           type: integer
           description: Requested result offset.
+        duplicatesRemoved:
+          type: integer
+          description: Number of items removed by title deduplication. Zero when distinct is false.
         hasMore:
           type: boolean
           description: true when more matched items remain after this response.
@@ -448,6 +474,9 @@ components:
         offset:
           type: integer
           description: Requested result offset.
+        distinct:
+          type: boolean
+          description: Whether title deduplication was enabled.
         categories:
           type: array
           items:

@@ -44,7 +44,8 @@ Use the fixed production endpoint `https://trendapi.tgmeng.com/api/skill/search`
   "endTime": null,
   "rootCategories": ["科技"],
   "limit": null,
-  "offset": 0
+  "offset": 0,
+  "distinct": false
 }
 ```
 
@@ -60,6 +61,7 @@ Use the fixed production endpoint `https://trendapi.tgmeng.com/api/skill/search`
 | `rootCategories` | string[]/string/null | No | Filter by root category, matching `items[].rootCategory` exactly. Empty or omitted means all root categories. |
 | `limit` | integer/null | No | Maximum returned items. Use `null` by default to mean no limit. The API also accepts omitted or `0` as no limit. Negative values are invalid. Do not set a concrete number unless the user explicitly requested a count or confirmed a limit. |
 | `offset` | integer/null | No | Result offset. Default is `0`. Use with a user-approved `limit` to fetch later results, for example `limit: 100, offset: 100` starts from the 101st matched item. Negative values are invalid. |
+| `distinct` | boolean/null | No | Whether to deduplicate by normalized title. Default is `false`. When `true`, deduplication runs after filters and before pagination, keeps the first item in the existing sort order, and does not use simHash. |
 
 Available `rootCategories` values:
 
@@ -102,15 +104,18 @@ Root category filters are AND-style with keyword matching. If `rootCategories` i
       "permission": "SEARCH",
       "limit": null,
       "offset": 0,
+      "distinct": false,
       "startTime": null,
       "endTime": null,
       "rootCategories": ["科技"]
     },
     "summary": {
       "total": 120,
+      "rawTotal": 120,
       "returned": 120,
       "limit": null,
       "offset": 0,
+      "duplicatesRemoved": 0,
       "hasMore": false,
       "truncated": false
     },
@@ -119,7 +124,7 @@ Root category filters are AND-style with keyword matching. If `rootCategories` i
 }
 ```
 
-`code = 200` means success. For all other codes, treat the call as failed and display or summarize `message`. On success, read results from `data.items`, query metadata from `data.query`, and pagination status from `data.summary`. `data.items` is ordered by update time from newest to oldest, so earlier items are newer, rather than being sorted by hotspot popularity weight. This helps agents understand the result ordering logic. If `data.summary.hasMore` is true, keep the same filters and increase `offset` by the current `returned` count or by the requested `limit` to fetch the next page.
+`code = 200` means success. For all other codes, treat the call as failed and display or summarize `message`. On success, read results from `data.items`, query metadata from `data.query`, and pagination status from `data.summary`. `data.items` is ordered by update time from newest to oldest, so earlier items are newer, rather than being sorted by hotspot popularity weight. This helps agents understand the result ordering logic. If `data.summary.hasMore` is true, keep the same filters and increase `offset` by the current `returned` count or by the requested `limit` to fetch the next page. When `distinct` is true, `data.summary.total` is the deduplicated total and `data.summary.rawTotal` is the pre-deduplication total.
 
 ### Raw Search Data Fields
 
@@ -130,13 +135,16 @@ Root category filters are AND-style with keyword matching. If `rootCategories` i
 | `data.query.permission` | string | Permission checked for this mode: `SEARCH` or `SKILLHISTORY`. |
 | `data.query.limit` | integer/null | Requested limit. `null` or `0` means no limit. |
 | `data.query.offset` | integer | Requested result offset. |
+| `data.query.distinct` | boolean | Whether title deduplication was enabled. |
 | `data.query.startTime` | string/null | Normalized time-window start used by the query. |
 | `data.query.endTime` | string/null | Normalized time-window end used by the query. |
 | `data.query.rootCategories` | string[]/null | Root category filters used by the query. |
-| `data.summary.total` | integer | Matched item count before pagination. |
+| `data.summary.total` | integer | Matched item count after optional title deduplication and before pagination. |
+| `data.summary.rawTotal` | integer | Matched item count before optional title deduplication. |
 | `data.summary.returned` | integer | Returned item count after `offset` and `limit`. |
 | `data.summary.limit` | integer/null | Requested limit. `null` or `0` means no limit. |
 | `data.summary.offset` | integer | Requested result offset. |
+| `data.summary.duplicatesRemoved` | integer | Number of items removed by title deduplication. Zero when `distinct` is false. |
 | `data.summary.hasMore` | boolean | Whether more matched results remain after this response. |
 | `data.summary.truncated` | boolean | Compatibility field with the same meaning as `hasMore`. |
 
@@ -172,7 +180,8 @@ Use the fixed production endpoint `https://trendapi.tgmeng.com/api/skill/index`.
   "keywords": ["AI"],
   "categories": ["all", "technology", "ai"],
   "limit": null,
-  "offset": 0
+  "offset": 0,
+  "distinct": false
 }
 ```
 
@@ -185,6 +194,7 @@ Use the fixed production endpoint `https://trendapi.tgmeng.com/api/skill/index`.
 | `categories` | string[]/string/null | No | Tgmeng Index category filter. The API also accepts `category`, `type`, `platformCategory`, or `分类` as aliases. Empty or omitted means all Tgmeng Index categories. |
 | `limit` | integer/null | No | Maximum returned items. Use `null` by default to mean no limit. The API also accepts omitted or `0` as no limit. Negative values are invalid. Do not set a concrete number unless the user explicitly requested a count or confirmed a limit. |
 | `offset` | integer/null | No | Result offset. Default is `0`. Use with a user-approved `limit` to fetch later results, for example `limit: 100, offset: 100` starts from the 101st matched item. Negative values are invalid. |
+| `distinct` | boolean/null | No | Whether to deduplicate by normalized title. Default is `false`. When `true`, deduplication runs after filters and before pagination, keeps the first item in the existing sort order, and does not use simHash. |
 
 Available Tgmeng Index category values:
 
@@ -207,13 +217,16 @@ Unknown categories are ignored. If no valid category remains, the API queries al
       "permission": "SEARCH",
       "limit": null,
       "offset": 0,
+      "distinct": false,
       "categories": ["all", "technology", "ai"]
     },
     "summary": {
       "total": 120,
+      "rawTotal": 120,
       "returned": 120,
       "limit": null,
       "offset": 0,
+      "duplicatesRemoved": 0,
       "hasMore": false,
       "truncated": false
     },
@@ -231,7 +244,7 @@ Unknown categories are ignored. If no valid category remains, the API queries al
 }
 ```
 
-`hotScore` is the Tgmeng Index heat value. Larger values mean higher heat. If `data.summary.hasMore` is true, keep the same filters and increase `offset` by the current `returned` count or by the requested `limit` to fetch the next page.
+`hotScore` is the Tgmeng Index heat value. Larger values mean higher heat. If `data.summary.hasMore` is true, keep the same filters and increase `offset` by the current `returned` count or by the requested `limit` to fetch the next page. When `distinct` is true, `data.summary.total` is the deduplicated total and `data.summary.rawTotal` is the pre-deduplication total.
 
 ### Tgmeng Index Data Fields
 
@@ -242,11 +255,14 @@ Unknown categories are ignored. If no valid category remains, the API queries al
 | `data.query.permission` | string | Permission checked for this endpoint, usually `SEARCH`. |
 | `data.query.limit` | integer/null | Requested limit. `null` or `0` means no limit. |
 | `data.query.offset` | integer | Requested result offset. |
+| `data.query.distinct` | boolean | Whether title deduplication was enabled. |
 | `data.query.categories` | string[] | Tgmeng Index categories used by the request. |
-| `data.summary.total` | integer | Matched item count before pagination. |
+| `data.summary.total` | integer | Matched item count after optional title deduplication and before pagination. |
+| `data.summary.rawTotal` | integer | Matched item count before optional title deduplication. |
 | `data.summary.returned` | integer | Returned item count after `offset` and `limit`. |
 | `data.summary.limit` | integer/null | Requested limit. `null` or `0` means no limit. |
 | `data.summary.offset` | integer | Requested result offset. |
+| `data.summary.duplicatesRemoved` | integer | Number of items removed by title deduplication. Zero when `distinct` is false. |
 | `data.summary.hasMore` | boolean | Whether more matched results remain after this response. |
 | `data.summary.truncated` | boolean | Compatibility field with the same meaning as `hasMore`. |
 
@@ -277,6 +293,7 @@ Common parameter errors:
 | `limit must be greater than or equal to 0` | `limit` is negative. |
 | `offset must be integer` | `offset` is not an integer. |
 | `offset must be greater than or equal to 0` | `offset` is negative. |
+| `distinct must be boolean` | `distinct` is not a boolean-compatible value. |
 | `rootCategories must be string array or string` | `rootCategories` is neither a JSON string array nor a string. |
 | `rootCategories unsupported, available values: 新闻, 羊毛, 媒体, 电视, 生活, 社区, 财经, 股讯, 体育, 科技, 设计, 影音, 游戏, 健康, 教育, 期货, AI, 副业` | `rootCategories` contains an unsupported value. |
 | `category must be string array or string` | Tgmeng Index category input is neither a JSON string array nor a string. |
@@ -301,6 +318,7 @@ Common permission errors:
 - Do not call raw `TODAY` or `HISTORY` without a keyword.
 - Set `limit` to `null` by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit.
 - Set `offset` to `0` by default. Use a larger `offset` only when continuing a paginated request.
+- Set `distinct` to `false` by default. Use `distinct: true` only when the user asks to reduce duplicate titles, repeated wire copy, reposts, or token waste from duplicated results.
 
 ## Examples
 
@@ -313,7 +331,8 @@ Common permission errors:
   "mode": "REALTIME",
   "rootCategories": ["AI"],
   "limit": null,
-  "offset": 0
+  "offset": 0,
+  "distinct": false
 }
 ```
 
@@ -328,7 +347,8 @@ Common permission errors:
   "startTime": "2026-05-05 00:00:00",
   "endTime": "2026-05-05 12:00:00",
   "limit": null,
-  "offset": 0
+  "offset": 0,
+  "distinct": false
 }
 ```
 
@@ -340,6 +360,7 @@ Common permission errors:
   "keywords": ["AI"],
   "categories": ["all", "technology", "ai"],
   "limit": null,
-  "offset": 0
+  "offset": 0,
+  "distinct": false
 }
 ```
