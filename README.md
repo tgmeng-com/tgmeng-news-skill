@@ -48,8 +48,8 @@ POST https://trendapi.tgmeng.com/api/skill/index
 `SKILL.md` 的 frontmatter 中声明了当前本地版本和远程版本清单地址：
 
 ```yaml
-version: 2.0.0
-updated_at: 2026-05-08
+version: 2.0.1
+updated_at: 2026-05-13
 update_check_url: https://raw.githubusercontent.com/tgmeng-com/tgmeng-news-skill/main/skill-version.json
 ```
 
@@ -57,13 +57,27 @@ update_check_url: https://raw.githubusercontent.com/tgmeng-com/tgmeng-news-skill
 
 ## 安装目录与缓存
 
-为避免部分 agent 框架出现 `skills_list` 可见但 `skill_view` 偶发 `Skill not found` 的缓存问题，安装目录建议固定为：
+为避免部分 agent 框架出现 `skills_list` 可见但 `skill_view` 偶发 `Skill not found` 的缓存问题，安装目录必须固定为：
 
 ```text
 tgmeng-news-skill
 ```
 
-目录名应与 `SKILL.md` 的 `name: tgmeng-news-skill`、`skill-version.json` 的 `name` 保持一致。更新 Skill 后，如果 agent 仍读取旧索引，请刷新/重启 agent 的 skill 缓存后再调用。
+目录名应与 `SKILL.md` 的 `name: tgmeng-news-skill`、`skill-version.json` 的 `name` 保持一致。不要为了兼容旧目录把 `SKILL.md` 的 `name` 改成 `tgmeng-news`。
+
+如果已经安装在旧目录或短目录名下，例如：
+
+```text
+tgmeng-news
+```
+
+请重新安装或重命名为：
+
+```text
+tgmeng-news-skill
+```
+
+cron 任务、跨环境同步、精确 Skill 引用都应使用 `tgmeng-news-skill`，避免依赖模糊匹配。更新 Skill 或重命名目录后，如果 agent 仍读取旧索引，请刷新/重启 agent 的 skill 缓存后再调用。
 
 - 如果本地版本不存在，视为需要更新。
 - 如果远程 `latestVersion` 大于本地 `version`，提醒用户本地 Skill 已落后。

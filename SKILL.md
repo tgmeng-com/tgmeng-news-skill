@@ -1,7 +1,7 @@
 ---
 name: tgmeng-news-skill
-version: 2.0.0
-updated_at: 2026-05-10
+version: 2.0.1
+updated_at: 2026-05-13
 update_check_url: https://raw.githubusercontent.com/tgmeng-com/tgmeng-news-skill/main/skill-version.json
 description: Search Tgmeng in-site news, hotspot data, and Tgmeng Index data through the Tgmeng Skill APIs. Use when an agent needs to query current, today, or historical Tgmeng news/hotspot records, or AI-generated Tgmeng Index lists, with a user-provided license and explicit user intent.
 ---
@@ -16,6 +16,12 @@ This skill exposes two capabilities:
 - Tgmeng Index search: `POST https://trendapi.tgmeng.com/api/skill/index`
 
 ## Agent Behavior Rules
+
+### Skill Identity
+
+Use `tgmeng-news-skill` as the stable skill name and installation directory name. The directory that contains this `SKILL.md` should be named `tgmeng-news-skill`, matching the `name` field in this file and the `name` field in `skill-version.json`.
+
+If this skill is installed under an older or shortened directory name such as `tgmeng-news`, tell the user to reinstall or rename the skill directory to `tgmeng-news-skill` before relying on cron tasks, cross-environment sync, or exact skill references. Do not change the `name` field to match the old directory.
 
 ### Version Check
 

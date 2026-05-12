@@ -4,6 +4,13 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
 
+## [2.0.1] - 2026-05-13
+
+### Changed
+
+- 版本检查失败时，明确提示只是更新检查失败、已跳过版本检查并继续使用本地版本，不影响当前 API 请求。
+- 明确 Skill 稳定名称和安装目录都应统一为 `tgmeng-news-skill`，旧目录 `tgmeng-news` 应迁移或重装，避免 cron 与跨环境同步依赖模糊匹配。
+
 ## [2.0.0] - 2026-05-10
 
 ### Changed

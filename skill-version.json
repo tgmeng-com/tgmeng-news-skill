@@ -1,17 +1,11 @@
 {
   "name": "tgmeng-news-skill",
-  "latestVersion": "2.0.0",
-  "updatedAt": "2026-05-10",
+  "latestVersion": "2.0.1",
+  "updatedAt": "2026-05-13",
   "changelogUrl": "https://github.com/tgmeng-com/tgmeng-news-skill/blob/main/CHANGELOG.md",
   "releaseNotes": [
-    "热榜数据搜索和糖果指数查询文档新增关键词表达式说明。",
-    "多个关键词项之间仍然保持 OR 逻辑，兼容原有关键词配置。",
-    "单个关键词项内支持 +、＋、&、＆ 表示必须包含，-、－、!、！ 表示排除。",
-    "补充 黄金+伊朗、黄金-伊朗、伊朗+导弹-足球 等调用示例。",
-    "热榜数据搜索和糖果指数查询文档新增 limit + offset 分页说明，响应 summary.hasMore 表示是否还有后续结果。",
-    "热榜数据搜索和糖果指数查询文档新增 distinct 按标题去重说明，响应 summary.rawTotal 和 summary.duplicatesRemoved 可用于查看去重效果。",
-    "补充方法、Content-Type、JSON 请求体、limit、offset、distinct 等参数错误提示，以及智能体安全重试建议。",
-    "补充安装目录与缓存刷新提示，建议目录名保持为 tgmeng-news-skill。"
+    "版本检查失败时，明确提示只是更新检查失败、已跳过版本检查并继续使用本地版本，不影响当前 API 请求。",
+    "明确 Skill 稳定名称和安装目录都应统一为 tgmeng-news-skill，旧目录 tgmeng-news 应迁移或重装，避免 cron 与跨环境同步依赖模糊匹配。"
   ],
   "agentUsageTips": [
     "用户明确说糖果指数、指数榜、热度指数、AI 汇总榜或综合热度时，优先使用 /api/skill/index。",
