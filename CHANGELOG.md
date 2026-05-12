@@ -12,6 +12,7 @@
 - 明确 Skill 稳定名称和安装目录都应统一为 `tgmeng-news-skill`，旧目录 `tgmeng-news` 应迁移或重装，避免 cron 与跨环境同步依赖模糊匹配。
 - 明确分页续拉公式为 `nextOffset = data.summary.offset + data.summary.returned`，并补充分页示例，避免用 `limit` 推导下一页。
 - 说明 `rootCategories` 列表是当前已知集合，平台可能继续扩展或调整，后续筛选应优先参考实际返回的 `items[].rootCategory` 和接口错误提示。
+- 明确当前全量实时热榜应使用 `mode: "REALTIME"` 和 `keywords: []`，不要传 `[""]` 或省略 `keywords`，并说明 `limit: null` 不代表突破服务端保护上限。
 
 ## [2.0.0] - 2026-05-10
 

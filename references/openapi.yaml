@@ -37,6 +37,16 @@ paths:
                   limit: null
                   offset: 0
                   distinct: false
+              realtimeFullFeed:
+                summary: Current full realtime feed without keyword filtering
+                value:
+                  license: USER_LICENSE_CODE
+                  keywords: []
+                  mode: REALTIME
+                  rootCategories: []
+                  limit: null
+                  offset: 0
+                  distinct: false
               today:
                 summary: Today search with default limit null
                 value:
@@ -143,7 +153,7 @@ components:
           description: Tgmeng universal license code (糖果梦通用密钥). If absent, obtain one at https://wechat.tgmeng.com. Must not be logged or exposed.
         keywords:
           type: array
-          description: Keyword list. Array items use OR matching. Inside one item, +, ＋, &, ＆ mean required include; -, －, !, ！ mean exclude. Examples: 黄金+伊朗, 黄金-伊朗, 伊朗+导弹-足球. TODAY and HISTORY require at least one non-blank item.
+          description: Keyword list. Array items use OR matching. Inside one item, +, ＋, &, ＆ mean required include; -, －, !, ！ mean exclude. For a current full realtime feed, send mode REALTIME with keywords as an empty array; do not send a blank string item and do not omit keywords. TODAY and HISTORY require at least one non-blank item.
           items:
             type: string
         mode:
@@ -154,7 +164,7 @@ components:
             - 'null'
           minimum: 0
           maximum: 2147483647
-          description: Maximum number of returned items. null means no limit by default. Agents must not set this field to a concrete number unless the user explicitly requested a count or confirmed a limit.
+          description: Maximum number of returned items. null means no client-side count limit by default, but actual returned count may still be bounded by current cache size, license permissions, and server-side protection limits. Agents must not set this field to a concrete number unless the user explicitly requested a count or confirmed a limit.
         offset:
           type:
             - integer

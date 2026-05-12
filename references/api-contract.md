@@ -54,7 +54,7 @@ Use the fixed production endpoint `https://trendapi.tgmeng.com/api/skill/search`
 | Field | Type | Required | Description |
 | --- | --- | --- | --- |
 | `license` | string | Yes | Tgmeng universal license code (糖果梦通用密钥) used for authorization. If the user does not have one, direct them to `https://wechat.tgmeng.com`. Never log or reveal it. |
-| `keywords` | string[] | Yes | Keyword array. Items are trimmed by the API. Blank items are ignored. Multiple keyword items use OR matching. Inside one item, `+`, `＋`, `&`, `＆` mean required include; `-`, `－`, `!`, `！` mean exclude. `TODAY` and `HISTORY` require at least one non-blank keyword. |
+| `keywords` | string[] | Yes | Keyword array. Items are trimmed by the API. Blank items are ignored. Multiple keyword items use OR matching. Inside one item, `+`, `＋`, `&`, `＆` mean required include; `-`, `－`, `!`, `！` mean exclude. For a current full realtime feed, send `mode: "REALTIME"` with `keywords: []`; do not send `[""]` and do not omit `keywords`. `TODAY` and `HISTORY` require at least one non-blank keyword. |
 | `mode` | enum | Yes | One of `REALTIME`, `TODAY`, `HISTORY`. Case-sensitive. |
 | `startTime` | string/null | No | Inclusive time window start for `TODAY` and `HISTORY`. Ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`; date-only values are normalized to `00:00:00`. |
 | `endTime` | string/null | No | Inclusive time window end for `TODAY` and `HISTORY`. Ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`; date-only values are normalized to `23:59:59`. |
@@ -80,6 +80,8 @@ The platform may add or adjust root categories over time. Treat this list as the
 | `HISTORY` | Long-term persisted history | `SKILLHISTORY` | Must contain at least one non-blank keyword. |
 
 Licenses include the `SEARCH` permission required by `REALTIME` by default. To use `TODAY` or `HISTORY`, contact the administrator, explain the use case, and request `SKILLHISTORY` permission.
+
+For a current full realtime feed, call `REALTIME` with `keywords: []`, `limit: null`, and `offset: 0`. `limit: null` means the agent is not applying a client-side count limit; the actual returned count is still bounded by the current realtime cache size, license permissions, and any server-side protection limits. Use `data.summary.returned`, `data.summary.total`, and `data.summary.hasMore` to understand the returned size.
 
 ### Time Window
 
@@ -338,6 +340,20 @@ Common permission errors:
   "keywords": ["AI"],
   "mode": "REALTIME",
   "rootCategories": ["AI"],
+  "limit": null,
+  "offset": 0,
+  "distinct": false
+}
+```
+
+### Raw Full Realtime Feed
+
+```json
+{
+  "license": "USER_LICENSE_CODE",
+  "keywords": [],
+  "mode": "REALTIME",
+  "rootCategories": [],
   "limit": null,
   "offset": 0,
   "distinct": false
