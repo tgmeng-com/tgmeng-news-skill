@@ -60,7 +60,7 @@ Use the fixed production endpoint `https://trendapi.tgmeng.com/api/skill/search`
 | `endTime` | string/null | No | Inclusive time window end for `TODAY` and `HISTORY`. Ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`; date-only values are normalized to `23:59:59`. |
 | `rootCategories` | string[]/string/null | No | Filter by root category, matching `items[].rootCategory` exactly. Empty or omitted means all root categories. |
 | `limit` | integer/null | No | Maximum returned items. Use `null` by default to mean no limit. The API also accepts omitted or `0` as no limit. Negative values are invalid. Do not set a concrete number unless the user explicitly requested a count or confirmed a limit. |
-| `offset` | integer/null | No | Result offset. Default is `0`. Use with a user-approved `limit` to fetch later results, for example `limit: 100, offset: 100` starts from the 101st matched item. Negative values are invalid. |
+| `offset` | integer/null | No | Result offset. Default is `0`. Use with a user-approved `limit` to fetch later pages. The next page offset is always `current offset + data.summary.returned`; for example, after requesting `limit: 100, offset: 0` and receiving `returned: 100`, request the next page with `offset: 100`. Negative values are invalid. |
 | `distinct` | boolean/null | No | Whether to deduplicate by normalized title. Default is `false`. When `true`, deduplication runs after filters and before pagination, keeps the first item in the existing sort order, and does not use simHash. |
 
 Available `rootCategories` values:
@@ -124,7 +124,7 @@ Root category filters are AND-style with keyword matching. If `rootCategories` i
 }
 ```
 
-`code = 200` means success. For all other codes, treat the call as failed and display or summarize `message`. On success, read results from `data.items`, query metadata from `data.query`, and pagination status from `data.summary`. `data.items` is ordered by update time from newest to oldest, so earlier items are newer, rather than being sorted by hotspot popularity weight. This helps agents understand the result ordering logic. If `data.summary.hasMore` is true, keep the same filters and increase `offset` by the current `returned` count or by the requested `limit` to fetch the next page. When `distinct` is true, `data.summary.total` is the deduplicated total and `data.summary.rawTotal` is the pre-deduplication total.
+`code = 200` means success. For all other codes, treat the call as failed and display or summarize `message`. On success, read results from `data.items`, query metadata from `data.query`, and pagination status from `data.summary`. `data.items` is ordered by update time from newest to oldest, so earlier items are newer, rather than being sorted by hotspot popularity weight. This helps agents understand the result ordering logic. If `data.summary.hasMore` is true, keep the same filters and set the next request's `offset` to `data.summary.offset + data.summary.returned`. Do not derive the next offset from `limit`, especially when `limit` is `null` or the API returns fewer items than requested. When `distinct` is true, `data.summary.total` is the deduplicated total and `data.summary.rawTotal` is the pre-deduplication total.
 
 ### Raw Search Data Fields
 
@@ -193,7 +193,7 @@ Use the fixed production endpoint `https://trendapi.tgmeng.com/api/skill/index`.
 | `keywords` | string[]/string/null | No | Keyword filter for hotspot titles. Empty or omitted means no title filtering. Multiple keyword items use OR matching. Inside one item, `+`, `＋`, `&`, `＆` mean required include; `-`, `－`, `!`, `！` mean exclude. Examples: `黄金+伊朗`, `黄金-伊朗`, `伊朗+导弹-足球`. |
 | `categories` | string[]/string/null | No | Tgmeng Index category filter. The API also accepts `category`, `type`, `platformCategory`, or `分类` as aliases. Empty or omitted means all Tgmeng Index categories. |
 | `limit` | integer/null | No | Maximum returned items. Use `null` by default to mean no limit. The API also accepts omitted or `0` as no limit. Negative values are invalid. Do not set a concrete number unless the user explicitly requested a count or confirmed a limit. |
-| `offset` | integer/null | No | Result offset. Default is `0`. Use with a user-approved `limit` to fetch later results, for example `limit: 100, offset: 100` starts from the 101st matched item. Negative values are invalid. |
+| `offset` | integer/null | No | Result offset. Default is `0`. Use with a user-approved `limit` to fetch later pages. The next page offset is always `current offset + data.summary.returned`; for example, after requesting `limit: 100, offset: 0` and receiving `returned: 100`, request the next page with `offset: 100`. Negative values are invalid. |
 | `distinct` | boolean/null | No | Whether to deduplicate by normalized title. Default is `false`. When `true`, deduplication runs after filters and before pagination, keeps the first item in the existing sort order, and does not use simHash. |
 
 Available Tgmeng Index category values:
@@ -244,7 +244,7 @@ Unknown categories are ignored. If no valid category remains, the API queries al
 }
 ```
 
-`hotScore` is the Tgmeng Index heat value. Larger values mean higher heat. If `data.summary.hasMore` is true, keep the same filters and increase `offset` by the current `returned` count or by the requested `limit` to fetch the next page. When `distinct` is true, `data.summary.total` is the deduplicated total and `data.summary.rawTotal` is the pre-deduplication total.
+`hotScore` is the Tgmeng Index heat value. Larger values mean higher heat. If `data.summary.hasMore` is true, keep the same filters and set the next request's `offset` to `data.summary.offset + data.summary.returned`. Do not derive the next offset from `limit`, especially when `limit` is `null` or the API returns fewer items than requested. When `distinct` is true, `data.summary.total` is the deduplicated total and `data.summary.rawTotal` is the pre-deduplication total.
 
 ### Tgmeng Index Data Fields
 
@@ -322,7 +322,7 @@ Common permission errors:
 - Do not retry aggressively on authorization failures.
 - Do not call raw `TODAY` or `HISTORY` without a keyword.
 - Set `limit` to `null` by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit.
-- Set `offset` to `0` by default. Use a larger `offset` only when continuing a paginated request.
+- Set `offset` to `0` by default. Continue pagination only when `data.summary.hasMore` is true, using `nextOffset = data.summary.offset + data.summary.returned`.
 - Set `distinct` to `false` by default. Use `distinct: true` only when the user asks to reduce duplicate titles, repeated wire copy, reposts, or token waste from duplicated results.
 - For self-healing retries, fix only the invalid field and retry once when safe: use POST for method errors, JSON content type for media-type errors, a JSON object for body-shape errors, integer non-negative values for `limit` and `offset`, boolean values for `distinct`, and a string array for raw search `keywords`.
 
