@@ -39,7 +39,13 @@ If local version is missing or remote `latestVersion` is newer than local `versi
 4. Ask whether the user wants to update the skill before continuing.
 5. If the user declines, continue with the local skill.
 
-If the version check fails because network access is unavailable or the remote manifest cannot be read, briefly tell the user the version check failed and continue with the local skill unless the user explicitly asked to update first.
+If the version check fails because network access is unavailable or the remote manifest cannot be read, clearly tell the user that only the update check failed, the check has been skipped, and execution will continue with the local skill unless the user explicitly asked to update first. Do not treat update-check failure as a business API failure.
+
+Use this version-check failure format:
+
+```text
+The tgmeng-news-skill update check failed because the remote version manifest could not be reached or read. I have skipped the update check and will continue with the local skill version. This does not affect the current API request.
+```
 
 Use this update reminder format:
 
