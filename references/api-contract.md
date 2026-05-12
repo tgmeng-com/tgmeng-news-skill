@@ -63,11 +63,13 @@ Use the fixed production endpoint `https://trendapi.tgmeng.com/api/skill/search`
 | `offset` | integer/null | No | Result offset. Default is `0`. Use with a user-approved `limit` to fetch later pages. The next page offset is always `current offset + data.summary.returned`; for example, after requesting `limit: 100, offset: 0` and receiving `returned: 100`, request the next page with `offset: 100`. Negative values are invalid. |
 | `distinct` | boolean/null | No | Whether to deduplicate by normalized title. Default is `false`. When `true`, deduplication runs after filters and before pagination, keeps the first item in the existing sort order, and does not use simHash. |
 
-Available `rootCategories` values:
+Currently known `rootCategories` values:
 
 ```text
 新闻, 羊毛, 媒体, 电视, 生活, 社区, 财经, 股讯, 体育, 科技, 设计, 影音, 游戏, 健康, 教育, 期货, AI, 副业
 ```
+
+The platform may add or adjust root categories over time. Treat this list as the currently documented set; when filtering, prefer categories observed in `items[].rootCategory` or listed by the API's `rootCategories unsupported` error message.
 
 ### Modes
 
@@ -89,7 +91,7 @@ If only `startTime` is provided, the API searches from that time to now. If only
 
 Keywords keep backward-compatible OR-style fuzzy matching between array items. A single keyword item can use lightweight expressions: `+`, `＋`, `&`, `＆` require included terms, while `-`, `－`, `!`, `！` exclude terms. Examples: `黄金+伊朗` means title contains both `黄金` and `伊朗`; `黄金-伊朗` means title contains `黄金` and does not contain `伊朗`; `伊朗+导弹-足球` means title contains `伊朗` and `导弹` and excludes `足球`.
 
-Root category filters are AND-style with keyword matching. If `rootCategories` is provided, the result must match one of those root categories.
+Root category filters are AND-style with keyword matching. If `rootCategories` is provided, the result must match one of those root categories. Root category values may expand as the platform changes; prefer actual `items[].rootCategory` values when summarizing or constructing follow-up filters.
 
 ### Response
 

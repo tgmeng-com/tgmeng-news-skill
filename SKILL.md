@@ -132,11 +132,13 @@ Parameter contract:
 - `offset`: integer or null. Optional. Result offset. Use `0` by default. Use it with a user-approved `limit` to fetch later pages. The next page offset is always `current offset + data.summary.returned`; for example, after requesting `limit: 100, offset: 0` and receiving `returned: 100`, the next request should use `offset: 100`. Negative values are invalid.
 - `distinct`: boolean or null. Optional. Default is `false`. When `true`, the API deduplicates by normalized title after keyword/category/time filtering and before pagination, keeping the first item in the existing sort order. It does not use simHash.
 
-Available `rootCategories` values:
+Currently known `rootCategories` values:
 
 ```text
 新闻, 羊毛, 媒体, 电视, 生活, 社区, 财经, 股讯, 体育, 科技, 设计, 影音, 游戏, 健康, 教育, 期货, AI, 副业
 ```
+
+The platform may add or adjust root categories over time. Treat this list as the currently documented set; when filtering, prefer categories observed in `items[].rootCategory` or listed by the API's `rootCategories unsupported` error message.
 
 Mode behavior:
 

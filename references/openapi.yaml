@@ -230,7 +230,7 @@ components:
                 - AI
                 - 副业
             - type: 'null'
-          description: Optional exact-match root category filter. Empty or omitted means all root categories.
+          description: Optional exact-match root category filter. Empty or omitted means all root categories. The enum is the currently documented set; the platform may add or adjust root categories, so prefer values observed in items[].rootCategory or listed by rootCategories unsupported errors.
     TgmengIndexRequest:
       type: object
       additionalProperties: true
