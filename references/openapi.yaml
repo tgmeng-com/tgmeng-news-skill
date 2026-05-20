@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Tgmeng News Skill APIs
-  version: 1.3.0
-  description: Search Tgmeng in-site news, hotspot data, and AI-generated Tgmeng Index lists by license, keyword array, mode, category filters, optional time window, optional user-approved result limit, offset pagination, and optional title deduplication.
+  version: 1.4.0
+  description: Search Tgmeng in-site news, hotspot data, AI-generated Tgmeng Index lists, and generated daily news reports by license, filters, optional user-approved result limit, and offset pagination.
 servers:
   - url: https://trendapi.tgmeng.com
     description: Fixed production API server
@@ -89,7 +89,7 @@ paths:
       description: |
         Search cached AI-generated Tgmeng Index lists. The endpoint returns indexed hotspot titles, categories, update time, and hotScore.
         Use this endpoint when the user clearly asks for 糖果指数, index lists, 热度指数, AI-generated ranking, or 综合热度.
-        If the user request is ambiguous between raw hotspot search and Tgmeng Index search, ask the user which capability they want before calling an API.
+        If the user request is ambiguous between raw hotspot search, Tgmeng Index search, and Daily News query, ask the user which capability they want before calling an API.
         Set limit to null by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit. Set offset to 0 by default; when continuing pagination, use nextOffset = data.summary.offset + data.summary.returned. Set distinct to false by default; use true only when the user asks to reduce duplicate titles or repeated reposts.
         Self-healing retries should fix only the invalid field: use POST, JSON content type, a JSON object body, integer non-negative limit/offset, and boolean distinct.
       requestBody:
@@ -130,6 +130,48 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/TgmengIndexResponse'
+  /api/skill/dailyNews:
+    post:
+      operationId: queryDailyNews
+      summary: Query generated Tgmeng daily news reports
+      description: |
+        Query already generated Tgmeng daily news reports by exact date, date range, and optional category.
+        Use this endpoint when the user asks for 日报, 每日总结, category daily report, report Markdown, or a generated report for a specific date.
+        The endpoint requires SEARCH permission. Set limit to null by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit. Set offset to 0 by default; when continuing pagination, use nextOffset = data.summary.offset + data.summary.returned.
+        Set withContent to true when the user wants report body, Markdown, article content, export, download, or learning material. Set withContent to false only for report lists or metadata.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DailyNewsRequest'
+            examples:
+              exactDateWithContent:
+                summary: Exact-date daily report with Markdown content
+                value:
+                  license: USER_LICENSE_CODE
+                  date: '2026-05-20'
+                  category: technology
+                  limit: null
+                  offset: 0
+                  withContent: true
+              dateRangeMetadata:
+                summary: Date-range daily report metadata list
+                value:
+                  license: USER_LICENSE_CODE
+                  startDate: '2026-05-01'
+                  endDate: '2026-05-20'
+                  category: all
+                  limit: null
+                  offset: 0
+                  withContent: false
+      responses:
+        '200':
+          description: Standard Tgmeng response envelope. Business errors may also return HTTP 200; inspect code and message.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DailyNewsResponse'
 components:
   schemas:
     SkillSearchMode:
@@ -531,3 +573,255 @@ components:
             - integer
             - 'null'
           description: Tgmeng Index heat value. Larger values mean higher heat.
+    DailyNewsRequest:
+      type: object
+      additionalProperties: true
+      required:
+        - license
+      properties:
+        license:
+          type: string
+          minLength: 1
+          description: Tgmeng universal license code (糖果梦通用密钥). Must not be logged or exposed.
+        date:
+          type:
+            - string
+            - 'null'
+          format: date
+          description: Exact report date in yyyy-MM-dd. When provided, it takes precedence over startDate and endDate.
+        startDate:
+          type:
+            - string
+            - 'null'
+          format: date
+          description: Inclusive report-date range start in yyyy-MM-dd. Used only when date is absent.
+        endDate:
+          type:
+            - string
+            - 'null'
+          format: date
+          description: Inclusive report-date range end in yyyy-MM-dd. Used only when date is absent.
+        category:
+          type:
+            - string
+            - 'null'
+          description: Daily report category value. Empty or all means all categories. Known values include all, news, wool, media, tv, life, community, finance, stock, sports, technology, design, audiovideo, game, health, education, futures, ai, sideline.
+        limit:
+          type:
+            - integer
+            - 'null'
+          minimum: 0
+          maximum: 50
+          description: Maximum number of returned reports. null means no limit by default. Agents must not set this field to a concrete number unless the user explicitly requested a count or confirmed a limit.
+        offset:
+          type:
+            - integer
+            - 'null'
+          minimum: 0
+          maximum: 2147483647
+          default: 0
+          description: Result offset. Default is 0. Use with a user-approved limit to fetch later pages. The next page offset is always current offset plus data.summary.returned.
+        withContent:
+          type:
+            - boolean
+            - 'null'
+          default: true
+          description: Whether to include items[].contentMarkdown. Use true for report body, Markdown, article content, export, download, or learning material. Use false for report lists or metadata.
+    DailyNewsResponse:
+      type: object
+      required:
+        - code
+        - message
+        - data
+      properties:
+        code:
+          type: integer
+          description: Business status code. 200 means success.
+        message:
+          type: string
+          description: Human-readable result or error message.
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/DailyNewsData'
+            - type: 'null'
+    DailyNewsData:
+      type: object
+      required:
+        - query
+        - summary
+        - items
+      properties:
+        query:
+          $ref: '#/components/schemas/DailyNewsQuery'
+        summary:
+          $ref: '#/components/schemas/DailyNewsSummary'
+        items:
+          type: array
+          description: Reports are ordered by report date from newest to oldest, then by id from newest to oldest.
+          items:
+            $ref: '#/components/schemas/DailyNewsItem'
+    DailyNewsQuery:
+      type: object
+      properties:
+        mode:
+          type: string
+          enum:
+            - DAILY_NEWS
+        permission:
+          type: string
+          enum:
+            - SEARCH
+        category:
+          type:
+            - string
+            - 'null'
+        date:
+          type:
+            - string
+            - 'null'
+          format: date
+        startDate:
+          type:
+            - string
+            - 'null'
+          format: date
+        endDate:
+          type:
+            - string
+            - 'null'
+          format: date
+        limit:
+          type:
+            - integer
+            - 'null'
+        offset:
+          type: integer
+          description: Requested result offset.
+        withContent:
+          type: boolean
+          description: Whether Markdown content was requested.
+    DailyNewsSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Matched report count before pagination.
+        returned:
+          type: integer
+          description: Returned report count after offset and limit are applied.
+        limit:
+          type:
+            - integer
+            - 'null'
+          description: Requested limit. null or 0 means no limit.
+        offset:
+          type: integer
+          description: Requested result offset.
+        hasMore:
+          type: boolean
+          description: true when more matched reports remain after this response.
+        truncated:
+          type: boolean
+          description: Compatibility field with the same meaning as hasMore.
+    DailyNewsItem:
+      type: object
+      additionalProperties: true
+      properties:
+        id:
+          type: integer
+          format: int64
+          description: Report id.
+        title:
+          type:
+            - string
+            - 'null'
+          description: Daily report title.
+        summary:
+          type:
+            - string
+            - 'null'
+          description: Daily report summary.
+        category:
+          type:
+            - string
+            - 'null'
+          description: Daily report category value.
+        categoryName:
+          type:
+            - string
+            - 'null'
+          description: Daily report category display name.
+        reportDate:
+          type:
+            - string
+            - 'null'
+          format: date
+          description: Report date in yyyy-MM-dd.
+        coverImageUrl:
+          type:
+            - string
+            - 'null'
+          description: Cover image URL when available.
+        tags:
+          type: array
+          items:
+            type: string
+          description: Report tags.
+        aiPlatforms:
+          type:
+            - string
+            - 'null'
+          description: AI platform information used during report generation.
+        aiModels:
+          type:
+            - string
+            - 'null'
+          description: AI model information used during report generation.
+        aiFroms:
+          type:
+            - string
+            - 'null'
+          description: AI request source or provider information.
+        requestTypes:
+          type:
+            - string
+            - 'null'
+          description: Request type information recorded during report generation.
+        totalTokens:
+          type:
+            - integer
+            - 'null'
+          format: int64
+          description: Total token usage recorded for report generation.
+        hotCount:
+          type:
+            - integer
+            - 'null'
+          description: Number of hotspots included in report generation.
+        inputCount:
+          type:
+            - integer
+            - 'null'
+          description: Number of input records used by the report-generation process.
+        batchCount:
+          type:
+            - integer
+            - 'null'
+          description: Batch count used by the report-generation process.
+        aiUsedTimeSeconds:
+          type:
+            - integer
+            - 'null'
+          format: int64
+          description: AI processing time in seconds.
+        durationMs:
+          type:
+            - integer
+            - 'null'
+          format: int64
+          description: Total report-generation task duration in milliseconds.
+        contentMarkdown:
+          type:
+            - string
+            - 'null'
+          description: Report body Markdown. Null when withContent is false.

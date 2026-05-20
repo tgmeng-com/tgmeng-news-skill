@@ -4,6 +4,21 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
 
+## [2.1.0] - 2026-05-20
+
+### Added
+
+- 新增日报数据查询能力，支持调用 `POST https://trendapi.tgmeng.com/api/skill/dailyNews` 查询已生成的糖果梦日报。
+- 日报查询支持 `license`、`date`、`startDate`、`endDate`、`category`、`limit`、`offset`、`withContent` 参数。
+- 日报查询返回标题、摘要、分类、日期、标签、AI 平台/模型信息、Token 消耗、热点数量以及可选的正文 Markdown。
+- `references/openapi.yaml` 新增 `/api/skill/dailyNews` 路径和对应请求、响应 schema。
+- `references/api-contract.md`、`README.md` 和 `SKILL.md` 新增日报查询的能力选择、参数契约、返回字段和调用示例。
+
+### Changed
+
+- Skill 能力说明从热榜数据搜索、糖果指数查询扩展为热榜数据搜索、糖果指数查询、日报数据查询三类能力。
+- 智能体歧义处理规则新增日报选项：当用户明确要日报、每日总结、Markdown 正文或某天分类日报时，优先使用日报查询接口。
+
 ## [2.0.1] - 2026-05-13
 
 ### Changed

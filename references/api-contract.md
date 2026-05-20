@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Expose Tgmeng in-site news, hotspot search, and Tgmeng Index search to external intelligent agents. This skill is a contract wrapper around remote HTTP APIs and does not store license credentials.
+Expose Tgmeng in-site news, hotspot search, Tgmeng Index search, and generated daily news reports to external intelligent agents. This skill is a contract wrapper around remote HTTP APIs and does not store license credentials.
 
 ## Agent Behavior Rules
 
@@ -12,7 +12,9 @@ Use raw hotspot search when the user clearly asks for original news/hotspot reco
 
 Use Tgmeng Index search when the user clearly asks for 糖果指数, index lists, 热度指数, AI-generated ranking, 综合热度, or cached Tgmeng Index data.
 
-If the user's request is ambiguous, such as "查热点", "看看热榜", or "最近有什么热搜", ask a short clarification before calling any API. Explain that raw hotspot search queries original news/hotspot data, while Tgmeng Index search queries AI-generated and cached index lists with `hotScore`.
+Use Daily News query when the user clearly asks for 日报, 每日总结, daily report, generated report content, category daily report, report Markdown, a report for a specific date, or a date-range list of generated reports.
+
+If the user's request is ambiguous, such as "查热点", "看看热榜", "最近有什么热搜", or "看看新闻总结", ask a short clarification before calling any API. Explain that raw hotspot search queries original news/hotspot data, Tgmeng Index search queries AI-generated and cached index lists with `hotScore`, and Daily News query returns already generated daily reports with optional Markdown content.
 
 ### Limit Handling
 
@@ -281,6 +283,152 @@ Unknown categories are ignored. If no valid category remains, the API queries al
 | `publishedAt` | string/null | Index list update time, usually `yyyy-MM-dd HH:mm:ss`. |
 | `hotScore` | integer/null | Tgmeng Index heat value. Larger values mean higher heat. |
 
+## Operation 3: Daily News Query
+
+`queryDailyNews`
+
+```text
+POST https://trendapi.tgmeng.com/api/skill/dailyNews
+Content-Type: application/json
+```
+
+Use the fixed production endpoint `https://trendapi.tgmeng.com/api/skill/dailyNews`.
+
+### Request
+
+```json
+{
+  "license": "USER_LICENSE_CODE",
+  "date": "2026-05-20",
+  "category": "technology",
+  "startDate": null,
+  "endDate": null,
+  "limit": null,
+  "offset": 0,
+  "withContent": true
+}
+```
+
+### Fields
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `license` | string | Yes | Tgmeng universal license code (糖果梦通用密钥) used for authorization. Never log or reveal it. |
+| `date` | string/null | No | Exact report date in `yyyy-MM-dd`. When provided, it takes precedence over `startDate` and `endDate`. |
+| `startDate` | string/null | No | Inclusive report-date range start in `yyyy-MM-dd`. Used only when `date` is absent. |
+| `endDate` | string/null | No | Inclusive report-date range end in `yyyy-MM-dd`. Used only when `date` is absent. |
+| `category` | string/null | No | Daily report category value. Empty or `all` means all categories. The API also accepts `type` or `分类` as request-field aliases. |
+| `limit` | integer/null | No | Maximum returned reports. Use `null` by default to mean no limit. The API also accepts omitted or `0` as no limit. Concrete values must be between `0` and `50`. Do not set a concrete number unless the user explicitly requested a count or confirmed a limit. |
+| `offset` | integer/null | No | Result offset. Default is `0`. Use with a user-approved `limit` to fetch later pages. The next page offset is always `current offset + data.summary.returned`. Negative values are invalid. |
+| `withContent` | boolean/null | No | Whether to include `items[].contentMarkdown`. Use `true` when the user asks for report body, Markdown, article content, export, download, or learning material. Use `false` when the user only wants a report list or metadata. |
+
+Known daily report category values:
+
+```text
+all, news, wool, media, tv, life, community, finance, stock, sports, technology, design, audiovideo, game, health, education, futures, ai, sideline
+```
+
+The endpoint checks the `SEARCH` license permission.
+
+### Response
+
+```json
+{
+  "code": 200,
+  "message": "请求成功",
+  "data": {
+    "query": {
+      "mode": "DAILY_NEWS",
+      "permission": "SEARCH",
+      "category": "technology",
+      "date": "2026-05-20",
+      "startDate": null,
+      "endDate": null,
+      "limit": null,
+      "offset": 0,
+      "withContent": true
+    },
+    "summary": {
+      "total": 1,
+      "returned": 1,
+      "limit": null,
+      "offset": 0,
+      "hasMore": false,
+      "truncated": false
+    },
+    "items": [
+      {
+        "id": 123,
+        "title": "AI Agent落地加速，芯片竞争与消费电子价格战成主线",
+        "summary": "今日科技热点集中在大模型应用、国产芯片和消费电子价格变化。",
+        "category": "technology",
+        "categoryName": "科技",
+        "reportDate": "2026-05-20",
+        "coverImageUrl": "https://example.com/image.jpg",
+        "tags": ["AI Agent", "芯片竞争", "消费电子"],
+        "aiPlatforms": "Sublyx",
+        "aiModels": "gpt-5.5",
+        "aiFroms": "糖果梦",
+        "requestTypes": "summary",
+        "totalTokens": 116541,
+        "hotCount": 2000,
+        "inputCount": 2000,
+        "batchCount": 10,
+        "aiUsedTimeSeconds": 420,
+        "durationMs": 180000,
+        "contentMarkdown": "# AI Agent落地加速..."
+      }
+    ]
+  }
+}
+```
+
+Reports are ordered by `reportDate` from newest to oldest, then by id from newest to oldest. If `data.summary.hasMore` is true, keep the same filters and set the next request's `offset` to `data.summary.offset + data.summary.returned`. `contentMarkdown` is `null` when `withContent` is false.
+
+### Daily News Data Fields
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `data.query.mode` | string | Fixed value `DAILY_NEWS`. |
+| `data.query.permission` | string | Permission checked for this endpoint, usually `SEARCH`. |
+| `data.query.category` | string/null | Category filter used by the request, or null for all categories. |
+| `data.query.date` | string/null | Exact report date used by the request. |
+| `data.query.startDate` | string/null | Report-date range start used by the request. |
+| `data.query.endDate` | string/null | Report-date range end used by the request. |
+| `data.query.limit` | integer/null | Requested limit. `null` or `0` means no limit. |
+| `data.query.offset` | integer | Requested result offset. |
+| `data.query.withContent` | boolean | Whether Markdown content was requested. |
+| `data.summary.total` | integer | Matched report count before pagination. |
+| `data.summary.returned` | integer | Returned report count after `offset` and `limit`. |
+| `data.summary.limit` | integer/null | Requested limit. `null` or `0` means no limit. |
+| `data.summary.offset` | integer | Requested result offset. |
+| `data.summary.hasMore` | boolean | Whether more matched reports remain after this response. |
+| `data.summary.truncated` | boolean | Compatibility field with the same meaning as `hasMore`. |
+
+### Daily News Item Fields
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `id` | integer | Report id. |
+| `title` | string/null | Daily report title. |
+| `summary` | string/null | Daily report summary. |
+| `category` | string/null | Daily report category value. |
+| `categoryName` | string/null | Daily report category display name. |
+| `reportDate` | string/null | Report date in `yyyy-MM-dd`. |
+| `coverImageUrl` | string/null | Cover image URL when available. |
+| `tags` | string[] | Report tags. |
+| `aiPlatforms` | string/null | AI platform information used during report generation. |
+| `aiModels` | string/null | AI model information used during report generation. |
+| `aiFroms` | string/null | AI request source or provider information. |
+| `requestTypes` | string/null | Request type information recorded during report generation. |
+| `totalTokens` | integer/null | Total token usage recorded for report generation. |
+| `hotCount` | integer/null | Number of hotspots included in report generation. |
+| `inputCount` | integer/null | Number of input records used by the report-generation process. |
+| `batchCount` | integer/null | Batch count used by the report-generation process. |
+| `aiUsedTimeSeconds` | integer/null | AI processing time in seconds. |
+| `durationMs` | integer/null | Total report-generation task duration in milliseconds. |
+| `contentMarkdown` | string/null | Report body Markdown. Null when `withContent` is false. |
+
 ## Error Contract
 
 Common parameter errors:
@@ -306,6 +454,13 @@ Common parameter errors:
 | `rootCategories must be string array or string` | `rootCategories` is neither a JSON string array nor a string. |
 | `rootCategories unsupported, available values: 新闻, 羊毛, 媒体, 电视, 生活, 社区, 财经, 股讯, 体育, 科技, 设计, 影音, 游戏, 健康, 教育, 期货, AI, 副业` | `rootCategories` contains an unsupported value. |
 | `category must be string array or string` | Tgmeng Index category input is neither a JSON string array nor a string. |
+| `category must be string` | Daily News category input is not a string. |
+| `date must be yyyy-MM-dd` | Daily News exact date is not in `yyyy-MM-dd` format. |
+| `startDate must be yyyy-MM-dd` | Daily News start date is not in `yyyy-MM-dd` format. |
+| `endDate must be yyyy-MM-dd` | Daily News end date is not in `yyyy-MM-dd` format. |
+| `startDate must be before or equal to endDate` | Daily News date range is reversed. |
+| `limit must be less than or equal to 50` | Daily News concrete limit is larger than the maximum allowed value. |
+| `withContent must be boolean` | Daily News `withContent` is not a boolean-compatible value. |
 | `startTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd` | `startTime` format is invalid. |
 | `endTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd` | `endTime` format is invalid. |
 | `startTime must be before or equal to endTime` | Time window is reversed. |
@@ -328,6 +483,7 @@ Common permission errors:
 - Set `limit` to `null` by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit.
 - Set `offset` to `0` by default. Continue pagination only when `data.summary.hasMore` is true, using `nextOffset = data.summary.offset + data.summary.returned`.
 - Set `distinct` to `false` by default. Use `distinct: true` only when the user asks to reduce duplicate titles, repeated wire copy, reposts, or token waste from duplicated results.
+- For Daily News, use `date` for exact-day report requests, or `startDate` and `endDate` for date ranges. Use `withContent: true` when the user wants report body or Markdown; use `withContent: false` for lists or metadata.
 - For self-healing retries, fix only the invalid field and retry once when safe: use POST for method errors, JSON content type for media-type errors, a JSON object for body-shape errors, integer non-negative values for `limit` and `offset`, boolean values for `distinct`, and a string array for raw search `keywords`.
 
 ## Examples
@@ -386,5 +542,32 @@ Common permission errors:
   "limit": null,
   "offset": 0,
   "distinct": false
+}
+```
+
+### Daily News Exact-Date Query
+
+```json
+{
+  "license": "USER_LICENSE_CODE",
+  "date": "2026-05-20",
+  "category": "technology",
+  "limit": null,
+  "offset": 0,
+  "withContent": true
+}
+```
+
+### Daily News Metadata List
+
+```json
+{
+  "license": "USER_LICENSE_CODE",
+  "startDate": "2026-05-01",
+  "endDate": "2026-05-20",
+  "category": "all",
+  "limit": null,
+  "offset": 0,
+  "withContent": false
 }
 ```

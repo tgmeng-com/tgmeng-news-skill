@@ -1,19 +1,20 @@
 ---
 name: tgmeng-news-skill
-version: 2.0.1
-updated_at: 2026-05-13
+version: 2.1.0
+updated_at: 2026-05-20
 update_check_url: https://raw.githubusercontent.com/tgmeng-com/tgmeng-news-skill/main/skill-version.json
-description: Search Tgmeng in-site news, hotspot data, and Tgmeng Index data through the Tgmeng Skill APIs. Use when an agent needs to query current, today, or historical Tgmeng news/hotspot records, or AI-generated Tgmeng Index lists, with a user-provided license and explicit user intent.
+description: Search Tgmeng in-site news, hotspot data, Tgmeng Index data, and generated daily news reports through the Tgmeng Skill APIs. Use when an agent needs to query current, today, or historical Tgmeng news/hotspot records, AI-generated Tgmeng Index lists, or generated Tgmeng daily reports with a user-provided license and explicit user intent.
 ---
 
 # Tgmeng News Skill
 
-Use this skill to call Tgmeng's news, hotspot, and Tgmeng Index APIs.
+Use this skill to call Tgmeng's news, hotspot, Tgmeng Index, and daily report APIs.
 
-This skill exposes two capabilities:
+This skill exposes three capabilities:
 
 - Raw hotspot search: `POST https://trendapi.tgmeng.com/api/skill/search`
 - Tgmeng Index search: `POST https://trendapi.tgmeng.com/api/skill/index`
+- Daily News query: `POST https://trendapi.tgmeng.com/api/skill/dailyNews`
 
 ## Agent Behavior Rules
 
@@ -76,10 +77,13 @@ Use raw hotspot search when the user clearly asks for original news/hotspot reco
 
 Use Tgmeng Index search when the user clearly asks for 糖果指数, index lists, 热度指数, AI-generated ranking, 综合热度, or cached Tgmeng Index data.
 
-If the user's request is ambiguous, such as "查热点", "看看热榜", or "最近有什么热搜", ask a short clarification before calling any API. Explain the options:
+Use Daily News query when the user clearly asks for 日报, 每日总结, daily report, generated report content, category daily report, report Markdown, a report for a specific date, or a date-range list of generated reports.
+
+If the user's request is ambiguous, such as "查热点", "看看热榜", "最近有什么热搜", or "看看新闻总结", ask a short clarification before calling any API. Explain the options:
 
 1. Raw hotspot search: searches original news/hotspot records. It supports `REALTIME`, `TODAY`, `HISTORY`, keywords, root categories, and optional time windows.
 2. Tgmeng Index search: searches AI-generated and cached Tgmeng Index lists. It returns indexed hotspot titles with `hotScore` and category, suitable for viewing overall heat.
+3. Daily News query: searches already generated Tgmeng daily reports. It supports date, date range, category, and optional Markdown content.
 
 Ask the user which capability they want to use, then call the matching endpoint.
 
@@ -297,6 +301,103 @@ Unknown categories are ignored. If no valid category remains, the API queries al
 
 Treat `data.items` as the Tgmeng Index result list. `hotScore` is the Tgmeng Index heat value; larger values mean higher heat. Use `data.summary.hasMore` to detect whether more results are available. `data.summary.truncated` is kept for compatibility and has the same meaning as `hasMore`. If `hasMore` is true and the user wants more results, keep the same filters and set the next request's `offset` to `data.summary.offset + data.summary.returned`. For example, if the current response has `offset: 100` and `returned: 100`, the next request should use `offset: 200`. When `distinct` is true, `data.summary.total` is the deduplicated total and `data.summary.rawTotal` is the pre-deduplication total.
 
+## Daily News Query
+
+Call:
+
+```text
+POST https://trendapi.tgmeng.com/api/skill/dailyNews
+```
+
+Send JSON with these business parameters:
+
+```json
+{
+  "license": "USER_LICENSE_CODE",
+  "date": "2026-05-20",
+  "category": "technology",
+  "startDate": null,
+  "endDate": null,
+  "limit": null,
+  "offset": 0,
+  "withContent": true
+}
+```
+
+Parameter contract:
+
+- `license`: string. Required. Tgmeng universal license code (糖果梦通用密钥). Do not log, expose, or hard-code it.
+- `date`: string or null. Optional. Exact report date in `yyyy-MM-dd`. When `date` is provided, it takes precedence over `startDate` and `endDate`.
+- `startDate`: string or null. Optional. Inclusive report-date range start in `yyyy-MM-dd`. Used only when `date` is absent.
+- `endDate`: string or null. Optional. Inclusive report-date range end in `yyyy-MM-dd`. Used only when `date` is absent.
+- `category`: string or null. Optional. Daily report category value, such as `all`, `news`, `wool`, `finance`, `technology`, `audiovideo`, or `ai`. Empty or `all` means all categories.
+- `limit`: integer or null. Optional. Maximum number of returned reports. Use `null` by default to mean no limit. The API also accepts omitted or `0` as no limit. The maximum concrete limit is `50`. Do not set a concrete number unless the user explicitly requested a count or confirmed a limit.
+- `offset`: integer or null. Optional. Result offset. Use `0` by default. Use it with a user-approved `limit` to fetch later pages. The next page offset is always `current offset + data.summary.returned`.
+- `withContent`: boolean or null. Optional. Whether to include `items[].contentMarkdown`. Use `true` when the user asks for report body, Markdown, article content, export, download, or learning material. Use `false` when the user only wants a report list or metadata. If unclear and response size matters, ask the user before disabling content.
+
+Known daily report category values:
+
+```text
+all, news, wool, media, tv, life, community, finance, stock, sports, technology, design, audiovideo, game, health, education, futures, ai, sideline
+```
+
+The Daily News endpoint requires the `SEARCH` license permission.
+
+### Daily News Response
+
+```json
+{
+  "code": 200,
+  "message": "请求成功",
+  "data": {
+    "query": {
+      "mode": "DAILY_NEWS",
+      "permission": "SEARCH",
+      "category": "technology",
+      "date": "2026-05-20",
+      "startDate": null,
+      "endDate": null,
+      "limit": null,
+      "offset": 0,
+      "withContent": true
+    },
+    "summary": {
+      "total": 1,
+      "returned": 1,
+      "limit": null,
+      "offset": 0,
+      "hasMore": false,
+      "truncated": false
+    },
+    "items": [
+      {
+        "id": 123,
+        "title": "AI Agent落地加速，芯片竞争与消费电子价格战成主线",
+        "summary": "今日科技热点集中在大模型应用、国产芯片和消费电子价格变化。",
+        "category": "technology",
+        "categoryName": "科技",
+        "reportDate": "2026-05-20",
+        "coverImageUrl": "https://example.com/image.jpg",
+        "tags": ["AI Agent", "芯片竞争", "消费电子"],
+        "aiPlatforms": "Sublyx",
+        "aiModels": "gpt-5.5",
+        "aiFroms": "糖果梦",
+        "requestTypes": "summary",
+        "totalTokens": 116541,
+        "hotCount": 2000,
+        "inputCount": 2000,
+        "batchCount": 10,
+        "aiUsedTimeSeconds": 420,
+        "durationMs": 180000,
+        "contentMarkdown": "# AI Agent落地加速..."
+      }
+    ]
+  }
+}
+```
+
+Treat `data.items` as the generated report list. Items are ordered by report date from newest to oldest, then by id from newest to oldest. `contentMarkdown` is null when `withContent` is false. If `data.summary.hasMore` is true and the user wants more reports, keep the same filters and set the next request's `offset` to `data.summary.offset + data.summary.returned`.
+
 ## Error Handling
 
 The APIs usually return HTTP 200 with a non-success envelope for business errors. Always inspect `code` and `message`.
@@ -321,6 +422,13 @@ Common parameter errors:
 - `rootCategories must be string array or string`: `rootCategories` is neither a JSON string array nor a string.
 - `rootCategories unsupported, available values: 新闻, 羊毛, 媒体, 电视, 生活, 社区, 财经, 股讯, 体育, 科技, 设计, 影音, 游戏, 健康, 教育, 期货, AI, 副业`: `rootCategories` contains an unsupported value.
 - `category must be string array or string`: Tgmeng Index category input is neither a JSON string array nor a string.
+- `category must be string`: Daily News category input is not a string.
+- `date must be yyyy-MM-dd`: Daily News exact date format is invalid.
+- `startDate must be yyyy-MM-dd`: Daily News start date format is invalid.
+- `endDate must be yyyy-MM-dd`: Daily News end date format is invalid.
+- `startDate must be before or equal to endDate`: Daily News date range is reversed.
+- `limit must be less than or equal to 50`: Daily News concrete limit is larger than the maximum allowed value.
+- `withContent must be boolean`: Daily News `withContent` is not a boolean-compatible value.
 - `TODAY/HISTORY mode keywords empty error`: raw search mode is `TODAY` or `HISTORY` but `keywords` has no non-blank values.
 - `startTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd`: `startTime` format is invalid.
 - `endTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd`: `endTime` format is invalid.
@@ -333,17 +441,19 @@ Common authorization errors:
 
 ## Recommended Agent Workflow
 
-1. Determine whether the user wants raw hotspot search or Tgmeng Index search.
-2. If the request is ambiguous, explain both capabilities and ask the user which one to use before calling an API.
+1. Determine whether the user wants raw hotspot search, Tgmeng Index search, or Daily News query.
+2. If the request is ambiguous, explain the available capabilities and ask the user which one to use before calling an API.
 3. Validate `license` locally before calling the API.
 4. Set `limit` to `null` by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit.
 5. For raw `TODAY` and `HISTORY`, require at least one non-blank keyword.
 6. For raw `TODAY` or `HISTORY`, pass `startTime` and `endTime` when the user asks for a precise period.
-7. Set `offset` to `0` by default. If `data.summary.hasMore` is true and the user wants more, call the same endpoint again with `offset = data.summary.offset + data.summary.returned`.
-8. Set `distinct` to `false` by default. Use `distinct: true` when the user asks to reduce duplicate titles, repeated wire copy, reposts, or token waste from duplicated results.
-9. Call the chosen endpoint with JSON content type.
-10. Read `code`, `message`, and `data` from the response envelope.
-11. Summarize results with source titles and URLs when available. Do not expose the license.
+7. For Daily News, use `date` for exact-day report requests, or `startDate` and `endDate` for report-date ranges.
+8. For Daily News, set `withContent` to `true` when the user wants report body or Markdown; set it to `false` only for report lists or metadata.
+9. Set `offset` to `0` by default. If `data.summary.hasMore` is true and the user wants more, call the same endpoint again with `offset = data.summary.offset + data.summary.returned`.
+10. Set `distinct` to `false` by default for raw hotspot search and Tgmeng Index search. Daily News does not support `distinct`.
+11. Call the chosen endpoint with JSON content type.
+12. Read `code`, `message`, and `data` from the response envelope.
+13. Summarize results with source titles, report titles, URLs, or Markdown content when available. Do not expose the license.
 
 If the API returns a parameter error, fix only the invalid field and retry once when safe: use POST for method errors, `Content-Type: application/json` for media-type errors, a JSON object for body-shape errors, integer non-negative values for `limit` and `offset`, boolean values for `distinct`, and a string array for raw search `keywords`.
 

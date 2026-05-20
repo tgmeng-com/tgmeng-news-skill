@@ -1,16 +1,17 @@
 # Tgmeng News Skill
 
-这是一个给外部智能体使用的 Tgmeng 站内新闻/热点搜索 Skill 包。
+这是一个给外部智能体使用的 Tgmeng 站内新闻/热点/日报查询 Skill 包。
 
 它本身不保存业务数据，也不保存密钥，只负责把 Tgmeng 搜索接口整理成标准、清晰、稳定的调用契约，方便龙虾、Hermes 或其他支持工具调用的智能体接入。
 
 ## 能力说明
 
-当前 Skill 暴露两个核心能力：
+当前 Skill 暴露三个核心能力：
 
 ```text
 1. 热榜数据搜索：按密钥、关键词数组、查询模式和可选时间窗口，搜索 Tgmeng 站内新闻和热点数据
 2. 糖果指数查询：按密钥、关键词和分类，查询糖果指数榜单
+3. 日报数据查询：按密钥、日期、日期范围和分类，查询已生成的糖果梦日报，可返回正文 Markdown
 ```
 
 底层实际调用接口：
@@ -18,6 +19,7 @@
 ```text
 POST https://trendapi.tgmeng.com/api/skill/search
 POST https://trendapi.tgmeng.com/api/skill/index
+POST https://trendapi.tgmeng.com/api/skill/dailyNews
 ```
 
 ## 目录结构
@@ -48,8 +50,8 @@ POST https://trendapi.tgmeng.com/api/skill/index
 `SKILL.md` 的 frontmatter 中声明了当前本地版本和远程版本清单地址：
 
 ```yaml
-version: 2.0.1
-updated_at: 2026-05-13
+version: 2.1.0
+updated_at: 2026-05-20
 update_check_url: https://raw.githubusercontent.com/tgmeng-com/tgmeng-news-skill/main/skill-version.json
 ```
 
@@ -387,6 +389,50 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
 | `data.items[].publishedAt` | 该指数榜单的更新时间。 |
 | `data.items[].hotScore` | 糖果指数热度值，数值越大表示热度越高。 |
 
+## 日报数据查询
+
+日报数据接口用于查询已经生成好的糖果梦日报，适合读取某一天、某个分类或一段日期内的日报内容。
+
+接口地址：
+
+```text
+POST https://trendapi.tgmeng.com/api/skill/dailyNews
+```
+
+请求示例：
+
+```json
+{
+  "license": "USER_LICENSE_CODE",
+  "date": "2026-05-20",
+  "category": "technology",
+  "limit": null,
+  "offset": 0,
+  "withContent": true
+}
+```
+
+字段说明：
+
+| 字段 | 类型 | 必填 | 说明 |
+| --- | --- | --- | --- |
+| `license` | string | 是 | 糖果梦通用密钥。由调用方传入，Skill 内不保存、不写死。 |
+| `date` | string/null | 否 | 指定日报日期，格式 `yyyy-MM-dd`。传了 `date` 时，会精确查询这一天。 |
+| `startDate` | string/null | 否 | 日期范围开始，格式 `yyyy-MM-dd`。未传 `date` 时生效。 |
+| `endDate` | string/null | 否 | 日期范围结束，格式 `yyyy-MM-dd`。未传 `date` 时生效。 |
+| `category` | string/null | 否 | 日报分类英文值。不传、空值或 `all` 表示查询全部分类。 |
+| `limit` | integer/null | 否 | 最大返回条数。默认传 `null` 表示不限制；具体值最大为 `50`。智能体不要自行设置具体数字，除非用户明确指定数量或确认限制条数。 |
+| `offset` | integer/null | 否 | 结果偏移量，默认 `0`。下一页固定使用 `data.summary.offset + data.summary.returned`。 |
+| `withContent` | boolean/null | 否 | 是否返回正文 Markdown。用户要正文、Markdown、下载、整理学习材料时传 `true`；只看列表或元数据时可传 `false`。 |
+
+分类可选值：
+
+```text
+all, news, wool, media, tv, life, community, finance, stock, sports, technology, design, audiovideo, game, health, education, futures, ai, sideline
+```
+
+返回里的 `data.items` 是日报列表，包含标题、摘要、分类、日期、标签、AI 平台/模型信息、Token 消耗、参与汇总的热点数量以及可选的 `contentMarkdown`。
+
 ## 常见错误
 
 | message | 说明 |
@@ -486,10 +532,13 @@ all, dubang, alltalk, technology, finance, entertainment, car, sports, game, liv
 
 当用户明确说“热搜原始数据”“新闻热点”“查某关键词”“查今天或历史”“按时间窗口检索”时，优先使用热榜数据搜索接口 `/api/skill/search`。
 
-当用户需求不明确时，例如只说“查热点”“看看热榜”“最近有什么热搜”，智能体应先询问用户要使用哪种能力：
+当用户明确说“日报”“每日总结”“某天日报”“分类日报”“Markdown 正文”“整理日报内容”时，优先使用日报数据接口 `/api/skill/dailyNews`。
+
+当用户需求不明确时，例如只说“查热点”“看看热榜”“最近有什么热搜”“看看新闻总结”，智能体应先询问用户要使用哪种能力：
 
 1. 热榜数据搜索：查询原始新闻/热点数据，支持实时、今日、历史、关键词、根分类和时间窗口。
 2. 糖果指数查询：查询糖果指数榜单，返回标题、分类和 `hotScore`，适合按综合热度查看热点。
+3. 日报数据查询：查询已经生成好的糖果梦日报，支持日期、分类和正文 Markdown。
 
 用户确认后再调用对应接口。
 

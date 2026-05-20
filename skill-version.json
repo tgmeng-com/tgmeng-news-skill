@@ -1,18 +1,19 @@
 {
   "name": "tgmeng-news-skill",
-  "latestVersion": "2.0.1",
-  "updatedAt": "2026-05-13",
+  "latestVersion": "2.1.0",
+  "updatedAt": "2026-05-20",
   "changelogUrl": "https://github.com/tgmeng-com/tgmeng-news-skill/blob/main/CHANGELOG.md",
   "releaseNotes": [
-    "版本检查失败时，明确提示只是更新检查失败、已跳过版本检查并继续使用本地版本，不影响当前 API 请求。",
-    "明确 Skill 稳定名称和安装目录都应统一为 tgmeng-news-skill，旧目录 tgmeng-news 应迁移或重装，避免 cron 与跨环境同步依赖模糊匹配。",
-    "明确分页续拉公式为 nextOffset = data.summary.offset + data.summary.returned，并补充分页示例，避免用 limit 推导下一页。",
-    "说明 rootCategories 列表是当前已知集合，平台可能继续扩展或调整，后续筛选应优先参考实际返回的 items[].rootCategory 和接口错误提示。",
-    "明确当前全量实时热榜应使用 mode: REALTIME 和 keywords: []，不要传 [\"\"] 或省略 keywords，并说明 limit: null 不代表突破服务端保护上限。"
+    "新增日报数据查询能力：POST https://trendapi.tgmeng.com/api/skill/dailyNews。",
+    "日报接口支持按 date、startDate、endDate、category 查询已生成日报，并可通过 withContent 控制是否返回正文 Markdown。",
+    "日报接口使用 SEARCH 权限，继续遵循 license 请求体传入、limit 默认 null、offset 续拉公式 nextOffset = data.summary.offset + data.summary.returned。",
+    "补充日报查询的 OpenAPI schema、详细契约、README 和智能体能力选择规则。"
   ],
   "agentUsageTips": [
     "用户明确说糖果指数、指数榜、热度指数、AI 汇总榜或综合热度时，优先使用 /api/skill/index。",
     "用户明确说原始热搜、新闻热点、历史、关键词或时间窗口检索时，优先使用 /api/skill/search。",
+    "用户明确说日报、每日总结、某天日报、分类日报、Markdown 正文或整理日报内容时，优先使用 /api/skill/dailyNews。",
+    "日报查询里，用户要正文、Markdown、导出或学习材料时传 withContent: true；只看列表或元数据时可传 withContent: false。",
     "用户要当前全量实时热榜时，调用 /api/skill/search，传 mode: REALTIME、keywords: []、limit: null、offset: 0。",
     "rootCategories 文档列表是当前已知集合；平台分类可能扩展，继续筛选时优先参考实际返回的 items[].rootCategory。",
     "当用户希望减少搜索噪音时，可以把多个条件写在一个 keywords 项里，例如 伊朗+导弹-足球；热榜数据搜索和糖果指数查询都适用。",
