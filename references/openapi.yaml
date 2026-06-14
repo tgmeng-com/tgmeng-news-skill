@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Tgmeng News Skill APIs
-  version: 1.4.0
-  description: Search Tgmeng in-site news, hotspot data, AI-generated Tgmeng Index lists, and generated daily news reports by license, filters, optional user-approved result limit, and offset pagination.
+  version: 1.5.0
+  description: Tgmeng/糖果梦 Open Platform Skill APIs for realtime hotspot search, historical news retrieval, Tgmeng Index/糖果指数 lists, daily report/日报 queries, and TGMENG image bed/图床 upload with PicGo-compatible multipart upload.
 servers:
   - url: https://trendapi.tgmeng.com
     description: Fixed production API server
@@ -172,6 +172,99 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DailyNewsResponse'
+  /api/v1/upload:
+    post:
+      operationId: uploadImageFile
+      summary: Upload images or files to the TGMENG image bed
+      servers:
+        - url: https://image.tgmeng.com
+          description: Fixed production image upload API server
+      description: |
+        Upload one or more files to the TGMENG image bed. Use this endpoint for API uploads, PicGo, third-party image hosting clients, scripts, batch uploads, and hosted public image/file links.
+        Requires a Tgmeng universal license with BASIC permission and a stable X-Machine-Id header. Uploaded files are owned by the validated license; users can manage only files uploaded under their own license.
+        Send multipart/form-data. Preferred file field is file for single upload and repeated files[] for batch upload. Compatible field names include image, smfile, source, files, upload, and media.
+        Existing /file/... public links remain externally accessible even if the license later expires; expiration blocks later upload/manage actions, not already published file delivery links.
+      parameters:
+        - name: X-License-Code
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+          description: Tgmeng universal license code. Preferred auth header. Do not log, expose, or place it in a URL.
+        - name: X-Machine-Id
+          in: header
+          required: true
+          schema:
+            type: string
+            minLength: 1
+          description: Stable device id for TGMENG device binding. Reuse the same value for the same client/device; do not rotate per request.
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Compatibility auth header. Use Bearer USER_LICENSE_CODE when a client supports bearer auth but not X-License-Code.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImageUploadRequest'
+            encoding:
+              file:
+                contentType: application/octet-stream
+              files[]:
+                contentType: application/octet-stream
+            examples:
+              singleUpload:
+                summary: Single image upload
+                value:
+                  file: image.png
+                  serverCompress: 'false'
+              batchUpload:
+                summary: Batch image upload
+                value:
+                  files[]:
+                    - a.png
+                    - b.jpg
+      responses:
+        '200':
+          description: Upload result. Inspect success, partial, message, url, data.urls, and files.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageUploadResponse'
+        '400':
+          description: Invalid multipart/form-data request or no file provided.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageUploadResponse'
+        '401':
+          description: Unauthorized. License or machine id validation failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageUploadResponse'
+        '403':
+          description: Source IP is blocked by protection rules.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageUploadResponse'
+        '413':
+          description: Uploaded file is too large.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageUploadResponse'
+        '500':
+          description: Upload or storage failure.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImageUploadResponse'
 components:
   schemas:
     SkillSearchMode:
@@ -300,7 +393,10 @@ components:
                 type: string
             - type: string
             - type: 'null'
-          description: Optional keyword filter for hotspot titles. Empty or omitted means no title filtering. Array items use OR matching. Inside one item, +, ＋, &, ＆ mean required include; -, －, !, ！ mean exclude. Examples: 黄金+伊朗, 黄金-伊朗, 伊朗+导弹-足球.
+          description: |
+            Optional keyword filter for hotspot titles. Empty or omitted means no title filtering.
+            Array items use OR matching. Inside one item, +, ＋, &, ＆ mean required include; -, －, !, ！ mean exclude.
+            Examples: 黄金+伊朗, 黄金-伊朗, 伊朗+导弹-足球.
         categories:
           oneOf:
             - type: array
@@ -825,3 +921,195 @@ components:
             - string
             - 'null'
           description: Report body Markdown. Null when withContent is false.
+    ImageUploadRequest:
+      type: object
+      additionalProperties: true
+      description: Multipart upload body. Include at least one supported file field. Preferred fields are file for single upload and repeated files[] for batch upload.
+      properties:
+        file:
+          type: string
+          format: binary
+          description: Preferred single-file upload field.
+        'files[]':
+          type: array
+          description: Preferred repeated batch upload field.
+          items:
+            type: string
+            format: binary
+        image:
+          type: string
+          format: binary
+          description: Compatible single-file alias.
+        smfile:
+          type: string
+          format: binary
+          description: Compatible PicGo/SM.MS-style single-file alias.
+        source:
+          type: string
+          format: binary
+          description: Compatible single-file alias.
+        files:
+          type: array
+          description: Compatible batch alias.
+          items:
+            type: string
+            format: binary
+        upload:
+          type: string
+          format: binary
+          description: Compatible single-file alias.
+        media:
+          type: string
+          format: binary
+          description: Compatible single-file alias.
+        uploadFolder:
+          type:
+            - string
+            - 'null'
+          description: Optional target folder/path label. Aliases include folder, dir, directory, and path.
+        folder:
+          type:
+            - string
+            - 'null'
+          description: Alias for uploadFolder.
+        dir:
+          type:
+            - string
+            - 'null'
+          description: Alias for uploadFolder.
+        directory:
+          type:
+            - string
+            - 'null'
+          description: Alias for uploadFolder.
+        path:
+          type:
+            - string
+            - 'null'
+          description: Alias for uploadFolder.
+        uploadNameType:
+          type:
+            - string
+            - 'null'
+          enum:
+            - default
+            - index
+            - origin
+            - short
+            - null
+          description: Optional naming strategy.
+        serverCompress:
+          type:
+            - string
+            - boolean
+            - 'null'
+          description: Boolean-compatible value. Use "false" to disable Telegram server compression.
+        autoRetry:
+          type:
+            - string
+            - boolean
+            - 'null'
+          description: Boolean-compatible value. Use "false" to disable automatic retry.
+    ImageUploadResponse:
+      type: object
+      additionalProperties: true
+      required:
+        - success
+        - message
+      properties:
+        success:
+          type: boolean
+          description: Whether all uploaded files succeeded.
+        partial:
+          type:
+            - boolean
+            - 'null'
+          description: true when some files succeeded and some failed.
+        code:
+          type:
+            - string
+            - 'null'
+          description: Machine-readable status such as success, unauthorized, no_file, or upload_failed.
+        message:
+          type: string
+          description: Human-readable result or error message.
+        url:
+          type:
+            - string
+            - 'null'
+          format: uri
+          description: First successful file URL, PicGo-compatible.
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/ImageUploadData'
+            - type: 'null'
+        files:
+          type: array
+          description: Per-file upload result list.
+          items:
+            $ref: '#/components/schemas/ImageUploadFileResult'
+    ImageUploadData:
+      type: object
+      additionalProperties: true
+      properties:
+        url:
+          type:
+            - string
+            - 'null'
+          format: uri
+          description: First successful file URL.
+        urls:
+          type: array
+          description: All successful uploaded file URLs.
+          items:
+            type: string
+            format: uri
+        markdown:
+          type:
+            - string
+            - 'null'
+          description: Markdown for the first successful uploaded file.
+        html:
+          type:
+            - string
+            - 'null'
+          description: HTML img tag for the first successful uploaded file.
+    ImageUploadFileResult:
+      type: object
+      additionalProperties: true
+      properties:
+        success:
+          type: boolean
+          description: Whether this file uploaded successfully.
+        name:
+          type:
+            - string
+            - 'null'
+          description: Original file name when available.
+        size:
+          type:
+            - integer
+            - 'null'
+          format: int64
+          description: File size in bytes.
+        id:
+          type:
+            - string
+            - 'null'
+          description: Stored file id/path segment.
+        url:
+          type:
+            - string
+            - 'null'
+          format: uri
+          description: Public file URL when upload succeeds.
+        markdown:
+          type:
+            - string
+            - 'null'
+          description: Markdown image link when upload succeeds.
+        message:
+          type:
+            - string
+            - 'null'
+          description: Per-file error or status message.

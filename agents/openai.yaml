@@ -1,6 +1,6 @@
 interface:
-  display_name: "Tgmeng News, Index, and Daily Reports"
-  short_description: "Search Tgmeng hotspots, Tgmeng Index data, and generated daily reports"
-  default_prompt: "Use $tgmeng-news-skill to search Tgmeng news, hotspot data, Tgmeng Index data, and generated daily reports. If the user request is ambiguous between raw hotspot search, Tgmeng Index search, and Daily News query, ask which capability they want before calling an API. Use limit null by default; do not set a concrete limit unless the user explicitly requested or confirmed a result count. For Daily News, use withContent true when the user wants report body or Markdown, and false only for lists or metadata."
+  display_name: "Tgmeng Open APIs and Image Upload"
+  short_description: "Search Tgmeng hotspots, index/daily data, and upload images/files via PicGo-compatible API"
+  default_prompt: "Use $tgmeng-news-skill to search Tgmeng news, hotspot data, Tgmeng Index data, generated daily reports, or upload images/files to the TGMENG image bed. If the user request is ambiguous between raw hotspot search, Tgmeng Index search, Daily News query, and Image/file upload, ask which capability they want before calling an API. Use limit null by default for query APIs; do not set a concrete limit unless the user explicitly requested or confirmed a result count. For Daily News, use withContent true when the user wants report body or Markdown, and false only for lists or metadata. For image upload, require a file path/blob and stable X-Machine-Id, send the license in X-License-Code or Authorization Bearer header, use multipart/form-data, and never expose the full license."
 policy:
   allow_implicit_invocation: true

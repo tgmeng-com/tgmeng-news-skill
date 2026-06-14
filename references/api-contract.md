@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Expose Tgmeng in-site news, hotspot search, Tgmeng Index search, and generated daily news reports to external intelligent agents. This skill is a contract wrapper around remote HTTP APIs and does not store license credentials.
+Expose Tgmeng in-site news, hotspot search, Tgmeng Index search, generated daily news reports, and TGMENG image/file upload to external intelligent agents. This skill is a contract wrapper around remote HTTP APIs and does not store license credentials.
 
 ## Agent Behavior Rules
 
@@ -14,7 +14,9 @@ Use Tgmeng Index search when the user clearly asks for 糖果指数, index lists
 
 Use Daily News query when the user clearly asks for 日报, 每日总结, daily report, generated report content, category daily report, report Markdown, a report for a specific date, or a date-range list of generated reports.
 
-If the user's request is ambiguous, such as "查热点", "看看热榜", "最近有什么热搜", or "看看新闻总结", ask a short clarification before calling any API. Explain that raw hotspot search queries original news/hotspot data, Tgmeng Index search queries AI-generated and cached index lists with `hotScore`, and Daily News query returns already generated daily reports with optional Markdown content.
+Use Image/file upload when the user clearly asks to upload images or files, use the TGMENG image bed, integrate PicGo or another third-party upload client, batch upload, generate hosted image URLs, or call the public image upload API.
+
+If the user's request is ambiguous, such as "查热点", "看看热榜", "最近有什么热搜", or "看看新闻总结", ask a short clarification before calling any API. Explain that raw hotspot search queries original news/hotspot data, Tgmeng Index search queries AI-generated and cached index lists with `hotScore`, Daily News query returns already generated daily reports with optional Markdown content, and Image/file upload sends local files to the TGMENG image bed and returns public links.
 
 ### Limit Handling
 
@@ -429,6 +431,108 @@ Reports are ordered by `reportDate` from newest to oldest, then by id from newes
 | `durationMs` | integer/null | Total report-generation task duration in milliseconds. |
 | `contentMarkdown` | string/null | Report body Markdown. Null when `withContent` is false. |
 
+## Operation 4: Image/File Upload
+
+`uploadImageFile`
+
+```text
+POST https://image.tgmeng.com/api/v1/upload
+Content-Type: multipart/form-data
+```
+
+Use the fixed production endpoint `https://image.tgmeng.com/api/v1/upload`.
+
+Use this operation for API upload, PicGo, third-party image hosting clients, scripts, batch uploads, and hosted public image/file links.
+
+### Headers
+
+| Header | Required | Description |
+| --- | --- | --- |
+| `X-License-Code` | Yes | Tgmeng universal license code. Recommended auth header. Never place it in a URL, log, or user-facing response. |
+| `X-Machine-Id` | Yes | Stable device id used for the same TGMENG device-binding behavior as the web products. Reuse the same value for the same client/device. |
+| `Authorization` | No | Compatibility auth form: `Bearer USER_LICENSE_CODE`. Use when a client supports bearer token but not custom license header. |
+
+The endpoint requires BASIC license permission. Uploaded files are owned by the validated license; users can manage only files uploaded under their own license.
+
+### Multipart Fields
+
+| Field | Type | Required | Description |
+| --- | --- | --- | --- |
+| `file` | binary | Yes for single upload | Preferred single-file field. |
+| `files[]` | binary[] | Yes for batch upload | Preferred repeated batch field. |
+| `image`, `smfile`, `source`, `files`, `upload`, `media` | binary/binary[] | No | Compatible aliases for third-party clients. |
+| `uploadFolder` | string | No | Target folder/path label. Aliases: `folder`, `dir`, `directory`, `path`. |
+| `uploadNameType` | enum | No | Naming strategy: `default`, `index`, `origin`, or `short`. |
+| `serverCompress` | boolean string | No | Use `"false"` to disable Telegram server compression. |
+| `autoRetry` | boolean string | No | Use `"false"` to disable automatic retry. |
+
+### Single Upload Example
+
+```bash
+curl -X POST "https://image.tgmeng.com/api/v1/upload" \
+  -H "X-License-Code: USER_LICENSE_CODE" \
+  -H "X-Machine-Id: USER_STABLE_MACHINE_ID" \
+  -F "file=@/path/to/image.png" \
+  -F "serverCompress=false"
+```
+
+### Batch Upload Example
+
+```bash
+curl -X POST "https://image.tgmeng.com/api/v1/upload" \
+  -H "X-License-Code: USER_LICENSE_CODE" \
+  -H "X-Machine-Id: USER_STABLE_MACHINE_ID" \
+  -F "files[]=@/path/to/a.png" \
+  -F "files[]=@/path/to/b.jpg"
+```
+
+### Response
+
+```json
+{
+  "success": true,
+  "partial": false,
+  "code": "success",
+  "message": "Upload success",
+  "url": "https://image.tgmeng.com/file/1749820000000_test.png",
+  "data": {
+    "url": "https://image.tgmeng.com/file/1749820000000_test.png",
+    "urls": ["https://image.tgmeng.com/file/1749820000000_test.png"],
+    "markdown": "![test.png](https://image.tgmeng.com/file/1749820000000_test.png)",
+    "html": "<img src=\"https://image.tgmeng.com/file/1749820000000_test.png\" alt=\"test.png\">"
+  },
+  "files": [
+    {
+      "success": true,
+      "name": "test.png",
+      "size": 12345,
+      "id": "1749820000000_test.png",
+      "url": "https://image.tgmeng.com/file/1749820000000_test.png",
+      "markdown": "![test.png](https://image.tgmeng.com/file/1749820000000_test.png)"
+    }
+  ]
+}
+```
+
+### Image Upload Response Fields
+
+| Field | Type | Description |
+| --- | --- | --- |
+| `success` | boolean | Whether all uploaded files succeeded. |
+| `partial` | boolean | Whether some files succeeded and some failed. |
+| `code` | string | Machine-readable status, such as `success`. |
+| `message` | string | Human-readable result or error message. |
+| `url` | string/null | First successful file URL, PicGo-compatible. |
+| `data.url` | string/null | First successful file URL. |
+| `data.urls` | string[] | All successful file URLs. |
+| `data.markdown` | string/null | Markdown for the first successful file. |
+| `data.html` | string/null | HTML image tag for the first successful file. |
+| `files[]` | object[] | Per-file result list with `success`, `name`, `size`, `id`, `url`, and `markdown`. |
+
+Existing `/file/...` public links remain externally accessible even if the license later expires. License expiration blocks later upload/manage actions, not already published file delivery links.
+
+Telegram-backed storage is intended for images and ordinary files. Files up to about 100 MB are the stable target range; hundreds of MB may be slow or unreliable, and very large video-like uploads are not recommended.
+
 ## Error Contract
 
 Common parameter errors:
@@ -464,6 +568,9 @@ Common parameter errors:
 | `startTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd` | `startTime` format is invalid. |
 | `endTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd` | `endTime` format is invalid. |
 | `startTime must be before or equal to endTime` | Time window is reversed. |
+| `Invalid multipart/form-data request` | Image upload body is not valid multipart form data. |
+| `No file provided` | Image upload request did not include any supported file field. |
+| `File too large` | Uploaded file exceeds the current upload limit. |
 
 Common permission errors:
 
@@ -471,12 +578,17 @@ Common permission errors:
 | --- | --- |
 | Invalid license | Report license validation failure. |
 | `TODAY` or `HISTORY` without `SKILLHISTORY` | Report missing historical search permission. |
+| Image upload without BASIC permission | Report missing upload permission; do not retry aggressively. |
+| Image upload without stable machine id | Reuse the same `X-Machine-Id` for the same client/device and retry once when safe. |
+| Image upload from blocked IP | Report HTTP 403 `Your IP is blocked`. |
 
 ## Security Rules For Agents
 
 - Never hard-code a license in the skill. If the user does not have a license, direct them to `https://wechat.tgmeng.com` to obtain a Tgmeng universal license code (糖果梦通用密钥).
 - Never print a full license in logs or user-facing output.
-- Pass the license only in the HTTPS request body.
+- For JSON news/index/daily APIs, pass the license only in the HTTPS request body.
+- For image upload, pass the license only in HTTPS headers: prefer `X-License-Code`, or use `Authorization: Bearer ...` for compatible clients. Do not place the license in the query string or multipart fields.
+- For image upload, pass a stable `X-Machine-Id` header and do not generate a new machine id for every request.
 - Diagnostics may record request metadata such as IP address, User-Agent, request path, error message, and license.
 - Do not retry aggressively on authorization failures.
 - Do not call raw `TODAY` or `HISTORY` without a keyword.
@@ -484,7 +596,8 @@ Common permission errors:
 - Set `offset` to `0` by default. Continue pagination only when `data.summary.hasMore` is true, using `nextOffset = data.summary.offset + data.summary.returned`.
 - Set `distinct` to `false` by default. Use `distinct: true` only when the user asks to reduce duplicate titles, repeated wire copy, reposts, or token waste from duplicated results.
 - For Daily News, use `date` for exact-day report requests, or `startDate` and `endDate` for date ranges. Use `withContent: true` when the user wants report body or Markdown; use `withContent: false` for lists or metadata.
-- For self-healing retries, fix only the invalid field and retry once when safe: use POST for method errors, JSON content type for media-type errors, a JSON object for body-shape errors, integer non-negative values for `limit` and `offset`, boolean values for `distinct`, and a string array for raw search `keywords`.
+- For Image/file upload, send `multipart/form-data`, include at least one supported file field, and treat `success: false` or `partial: true` as an upload problem to report clearly.
+- For self-healing retries, fix only the invalid field and retry once when safe: use POST for method errors, JSON content type for JSON API media-type errors, multipart form data for image upload, a JSON object for body-shape errors, integer non-negative values for `limit` and `offset`, boolean values for `distinct`, and a string array for raw search `keywords`.
 
 ## Examples
 
@@ -570,4 +683,23 @@ Common permission errors:
   "offset": 0,
   "withContent": false
 }
+```
+
+### Image Upload
+
+```bash
+curl -X POST "https://image.tgmeng.com/api/v1/upload" \
+  -H "X-License-Code: USER_LICENSE_CODE" \
+  -H "X-Machine-Id: USER_STABLE_MACHINE_ID" \
+  -F "file=@/path/to/image.png"
+```
+
+### Image Batch Upload
+
+```bash
+curl -X POST "https://image.tgmeng.com/api/v1/upload" \
+  -H "X-License-Code: USER_LICENSE_CODE" \
+  -H "X-Machine-Id: USER_STABLE_MACHINE_ID" \
+  -F "files[]=@/path/to/a.png" \
+  -F "files[]=@/path/to/b.jpg"
 ```

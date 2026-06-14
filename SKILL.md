@@ -1,20 +1,21 @@
 ---
 name: tgmeng-news-skill
-version: 2.1.0
-updated_at: 2026-05-20
+version: 2.2.1
+updated_at: 2026-06-14
 update_check_url: https://raw.githubusercontent.com/tgmeng-com/tgmeng-news-skill/main/skill-version.json
-description: Search Tgmeng in-site news, hotspot data, Tgmeng Index data, and generated daily news reports through the Tgmeng Skill APIs. Use when an agent needs to query current, today, or historical Tgmeng news/hotspot records, AI-generated Tgmeng Index lists, or generated Tgmeng daily reports with a user-provided license and explicit user intent.
+description: Search Tgmeng/糖果梦 in-site news, hotspot data, Tgmeng Index/糖果指数 data, generated daily news reports/日报, and upload images/files to the TGMENG image bed/图床 through the Tgmeng Open Platform Skill APIs. Use when an agent needs to query current, today, or historical news/hotspot records, AI-generated ranking/index lists, daily report Markdown, PicGo/third-party image upload, batch upload, or hosted image/file URLs with a user-provided license and explicit user intent.
 ---
 
 # Tgmeng News Skill
 
-Use this skill to call Tgmeng's news, hotspot, Tgmeng Index, and daily report APIs.
+Use this skill to call Tgmeng's news, hotspot, Tgmeng Index, daily report, and image upload APIs.
 
-This skill exposes three capabilities:
+This skill exposes four capabilities:
 
 - Raw hotspot search: `POST https://trendapi.tgmeng.com/api/skill/search`
 - Tgmeng Index search: `POST https://trendapi.tgmeng.com/api/skill/index`
 - Daily News query: `POST https://trendapi.tgmeng.com/api/skill/dailyNews`
+- Image/file upload: `POST https://image.tgmeng.com/api/v1/upload`
 
 ## Agent Behavior Rules
 
@@ -79,11 +80,14 @@ Use Tgmeng Index search when the user clearly asks for 糖果指数, index lists
 
 Use Daily News query when the user clearly asks for 日报, 每日总结, daily report, generated report content, category daily report, report Markdown, a report for a specific date, or a date-range list of generated reports.
 
+Use Image/file upload when the user clearly asks to upload images, upload files to the image bed, use PicGo or a third-party upload client, batch upload, generate hosted image URLs, or call the public image upload API.
+
 If the user's request is ambiguous, such as "查热点", "看看热榜", "最近有什么热搜", or "看看新闻总结", ask a short clarification before calling any API. Explain the options:
 
 1. Raw hotspot search: searches original news/hotspot records. It supports `REALTIME`, `TODAY`, `HISTORY`, keywords, root categories, and optional time windows.
 2. Tgmeng Index search: searches AI-generated and cached Tgmeng Index lists. It returns indexed hotspot titles with `hotScore` and category, suitable for viewing overall heat.
 3. Daily News query: searches already generated Tgmeng daily reports. It supports date, date range, category, and optional Markdown content.
+4. Image/file upload: uploads local images or files to the TGMENG image bed and returns public links, Markdown, HTML, and batch result metadata.
 
 Ask the user which capability they want to use, then call the matching endpoint.
 
@@ -398,9 +402,101 @@ The Daily News endpoint requires the `SEARCH` license permission.
 
 Treat `data.items` as the generated report list. Items are ordered by report date from newest to oldest, then by id from newest to oldest. `contentMarkdown` is null when `withContent` is false. If `data.summary.hasMore` is true and the user wants more reports, keep the same filters and set the next request's `offset` to `data.summary.offset + data.summary.returned`.
 
+## Image/File Upload
+
+Call:
+
+```text
+POST https://image.tgmeng.com/api/v1/upload
+Content-Type: multipart/form-data
+```
+
+Use this endpoint when the user wants API upload, PicGo integration, third-party image hosting clients, scripted uploads, batch uploads, or public image/file links.
+
+Send authentication in HTTPS headers:
+
+```text
+X-License-Code: USER_LICENSE_CODE
+X-Machine-Id: USER_STABLE_MACHINE_ID
+Authorization: Bearer USER_LICENSE_CODE
+```
+
+Header contract:
+
+- `X-License-Code`: string. Required and recommended. Tgmeng universal license code. Do not send it in query strings, logs, or user-facing output.
+- `X-Machine-Id`: string. Required. Stable device identifier for the same user/device binding logic used by TGMENG sites. Generate or reuse a stable value per client/device; do not rotate it per request.
+- `Authorization`: string. Optional compatibility form. `Bearer USER_LICENSE_CODE` may be used instead of `X-License-Code` when a client only supports bearer tokens.
+
+Send files as `multipart/form-data` fields. Preferred field names:
+
+- `file`: preferred single-file field.
+- `files[]`: preferred repeated batch field.
+- Compatible aliases: `image`, `smfile`, `source`, `files`, `upload`, `media`.
+
+Optional form fields:
+
+- `uploadFolder`: target folder/path label. Aliases: `folder`, `dir`, `directory`, `path`.
+- `uploadNameType`: naming strategy. Supported values: `default`, `index`, `origin`, `short`.
+- `serverCompress`: boolean string. Use `"false"` to disable Telegram server compression.
+- `autoRetry`: boolean string. Use `"false"` to disable auto-retry.
+
+Single upload example:
+
+```bash
+curl -X POST "https://image.tgmeng.com/api/v1/upload" \
+  -H "X-License-Code: USER_LICENSE_CODE" \
+  -H "X-Machine-Id: USER_STABLE_MACHINE_ID" \
+  -F "file=@/path/to/image.png" \
+  -F "serverCompress=false"
+```
+
+Batch upload example:
+
+```bash
+curl -X POST "https://image.tgmeng.com/api/v1/upload" \
+  -H "X-License-Code: USER_LICENSE_CODE" \
+  -H "X-Machine-Id: USER_STABLE_MACHINE_ID" \
+  -F "files[]=@/path/to/a.png" \
+  -F "files[]=@/path/to/b.jpg"
+```
+
+### Image/File Upload Response
+
+```json
+{
+  "success": true,
+  "partial": false,
+  "code": "success",
+  "message": "Upload success",
+  "url": "https://image.tgmeng.com/file/1749820000000_test.png",
+  "data": {
+    "url": "https://image.tgmeng.com/file/1749820000000_test.png",
+    "urls": ["https://image.tgmeng.com/file/1749820000000_test.png"],
+    "markdown": "![test.png](https://image.tgmeng.com/file/1749820000000_test.png)",
+    "html": "<img src=\"https://image.tgmeng.com/file/1749820000000_test.png\" alt=\"test.png\">"
+  },
+  "files": [
+    {
+      "success": true,
+      "name": "test.png",
+      "size": 12345,
+      "id": "1749820000000_test.png",
+      "url": "https://image.tgmeng.com/file/1749820000000_test.png",
+      "markdown": "![test.png](https://image.tgmeng.com/file/1749820000000_test.png)"
+    }
+  ]
+}
+```
+
+Treat `url` and `data.url` as the first successful file URL, `data.urls` as all successful URLs, and `files` as per-file batch status. `partial: true` means at least one file failed while at least one file succeeded.
+
+The endpoint requires BASIC license permission. Files are owned by the validated license, and users can manage only files uploaded under their own license. Existing `/file/...` public links remain externally accessible even if the license later expires; expiration blocks later upload/manage actions, not already published file delivery links.
+
+Telegram-backed storage is intended for images and ordinary files. Files up to about 100 MB are the stable target range; hundreds of MB may be slow or unreliable, and very large video-like uploads are not recommended.
+
 ## Error Handling
 
-The APIs usually return HTTP 200 with a non-success envelope for business errors. Always inspect `code` and `message`.
+The JSON query APIs usually return HTTP 200 with a non-success envelope for business errors. Always inspect `code` and `message`. The Image/file upload API may use HTTP status codes such as 400, 401, 403, 413, and 500 in addition to its JSON response body.
 
 Common parameter errors:
 
@@ -438,10 +534,21 @@ Common authorization errors:
 
 - Missing or invalid license: license validation fails.
 - Missing `SKILLHISTORY`: `TODAY` or `HISTORY` was requested but the license lacks historical search permission.
+- Image upload missing/invalid license or missing BASIC permission: report upload authorization failure and do not retry aggressively.
+- Image upload missing/rotated `X-Machine-Id`: reuse the stable device machine id instead of generating a new one per request.
+
+Common image upload HTTP errors:
+
+- HTTP 400 `Invalid multipart/form-data request`: request is not valid multipart form data.
+- HTTP 400 `No file provided`: no supported file field was sent.
+- HTTP 401 `Unauthorized`: license or machine id authorization failed.
+- HTTP 403 `Your IP is blocked`: source IP is blocked by protection rules.
+- HTTP 413 `File too large`: file exceeded the current upload limit.
+- HTTP 500 upload/storage failures: retry once only when the request is idempotent and the user accepts a retry.
 
 ## Recommended Agent Workflow
 
-1. Determine whether the user wants raw hotspot search, Tgmeng Index search, or Daily News query.
+1. Determine whether the user wants raw hotspot search, Tgmeng Index search, Daily News query, or Image/file upload.
 2. If the request is ambiguous, explain the available capabilities and ask the user which one to use before calling an API.
 3. Validate `license` locally before calling the API.
 4. Set `limit` to `null` by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit.
@@ -449,13 +556,14 @@ Common authorization errors:
 6. For raw `TODAY` or `HISTORY`, pass `startTime` and `endTime` when the user asks for a precise period.
 7. For Daily News, use `date` for exact-day report requests, or `startDate` and `endDate` for report-date ranges.
 8. For Daily News, set `withContent` to `true` when the user wants report body or Markdown; set it to `false` only for report lists or metadata.
-9. Set `offset` to `0` by default. If `data.summary.hasMore` is true and the user wants more, call the same endpoint again with `offset = data.summary.offset + data.summary.returned`.
-10. Set `distinct` to `false` by default for raw hotspot search and Tgmeng Index search. Daily News does not support `distinct`.
-11. Call the chosen endpoint with JSON content type.
-12. Read `code`, `message`, and `data` from the response envelope.
-13. Summarize results with source titles, report titles, URLs, or Markdown content when available. Do not expose the license.
+9. For Image/file upload, require at least one file path/blob and a stable `X-Machine-Id`; send `multipart/form-data`, not JSON.
+10. Set `offset` to `0` by default. If `data.summary.hasMore` is true and the user wants more, call the same endpoint again with `offset = data.summary.offset + data.summary.returned`.
+11. Set `distinct` to `false` by default for raw hotspot search and Tgmeng Index search. Daily News and Image/file upload do not support `distinct`.
+12. Call the chosen news/index/daily endpoint with JSON content type, or the image upload endpoint with multipart form data.
+13. Read `code`, `message`, and `data` from JSON APIs; for image upload, read `success`, `partial`, `url`, `data.urls`, and `files`.
+14. Summarize results with source titles, report titles, URLs, or Markdown content when available. Do not expose the license.
 
-If the API returns a parameter error, fix only the invalid field and retry once when safe: use POST for method errors, `Content-Type: application/json` for media-type errors, a JSON object for body-shape errors, integer non-negative values for `limit` and `offset`, boolean values for `distinct`, and a string array for raw search `keywords`.
+If the API returns a parameter error, fix only the invalid field and retry once when safe: use POST for method errors, `Content-Type: application/json` for JSON media-type errors, `multipart/form-data` for image upload, a JSON object for body-shape errors, integer non-negative values for `limit` and `offset`, boolean values for `distinct`, and a string array for raw search `keywords`.
 
 Diagnostics may record request metadata such as IP address, User-Agent, request path, error message, and license. Do not include the full license in agent logs or user-facing output.
 

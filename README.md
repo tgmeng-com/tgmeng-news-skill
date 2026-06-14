@@ -1,17 +1,26 @@
-# Tgmeng News Skill
+# Tgmeng News Skill - 糖果梦热榜 API、日报 API、图床上传 API 与智能体接入
 
-这是一个给外部智能体使用的 Tgmeng 站内新闻/热点/日报查询 Skill 包。
+这是一个给外部智能体使用的 Tgmeng / 糖果梦开放平台 Skill 包，覆盖站内新闻热点查询、糖果指数、日报数据和图床上传 API。
 
-它本身不保存业务数据，也不保存密钥，只负责把 Tgmeng 搜索接口整理成标准、清晰、稳定的调用契约，方便龙虾、Hermes 或其他支持工具调用的智能体接入。
+它本身不保存业务数据，也不保存密钥，只负责把 Tgmeng 接口能力整理成标准、清晰、稳定的调用契约，方便龙虾、Hermes 或其他支持工具调用的智能体接入。
+
+## 适用场景
+
+- 糖果梦热榜 API、实时热点 API、历史热点检索、关键词热搜查询。
+- 糖果指数 API、AI 汇总榜单、综合热度和分类热点趋势查询。
+- 糖果梦日报 API、每日总结、分类日报、Markdown 正文读取。
+- 糖果梦图床上传 API、PicGo 图床、第三方客户端上传、批量上传和图片外链生成。
+- AI Agent、Codex、龙虾、Hermes 等智能体工具调用和自动化脚本接入。
 
 ## 能力说明
 
-当前 Skill 暴露三个核心能力：
+当前 Skill 暴露四个核心能力：
 
 ```text
 1. 热榜数据搜索：按密钥、关键词数组、查询模式和可选时间窗口，搜索 Tgmeng 站内新闻和热点数据
 2. 糖果指数查询：按密钥、关键词和分类，查询糖果指数榜单
 3. 日报数据查询：按密钥、日期、日期范围和分类，查询已生成的糖果梦日报，可返回正文 Markdown
+4. 图床上传 API：按密钥和稳定机器码上传图片/文件，支持 PicGo、三方客户端、脚本调用和批量上传
 ```
 
 底层实际调用接口：
@@ -20,6 +29,7 @@
 POST https://trendapi.tgmeng.com/api/skill/search
 POST https://trendapi.tgmeng.com/api/skill/index
 POST https://trendapi.tgmeng.com/api/skill/dailyNews
+POST https://image.tgmeng.com/api/v1/upload
 ```
 
 ## 目录结构
@@ -50,8 +60,8 @@ POST https://trendapi.tgmeng.com/api/skill/dailyNews
 `SKILL.md` 的 frontmatter 中声明了当前本地版本和远程版本清单地址：
 
 ```yaml
-version: 2.1.0
-updated_at: 2026-05-20
+version: 2.2.1
+updated_at: 2026-06-14
 update_check_url: https://raw.githubusercontent.com/tgmeng-com/tgmeng-news-skill/main/skill-version.json
 ```
 
@@ -433,6 +443,92 @@ all, news, wool, media, tv, life, community, finance, stock, sports, technology,
 
 返回里的 `data.items` 是日报列表，包含标题、摘要、分类、日期、标签、AI 平台/模型信息、Token 消耗、参与汇总的热点数量以及可选的 `contentMarkdown`。
 
+## 图床上传 API
+
+图床上传接口用于给 PicGo、三方客户端、脚本或其他智能体上传图片/文件，并返回可公开访问的链接、Markdown 和批量结果。
+
+接口地址：
+
+```text
+POST https://image.tgmeng.com/api/v1/upload
+Content-Type: multipart/form-data
+```
+
+请求头：
+
+| Header | 必填 | 说明 |
+| --- | --- | --- |
+| `X-License-Code` | 是 | 糖果梦通用密钥，推荐认证方式。不要放到 URL、日志或公开输出里。 |
+| `X-Machine-Id` | 是 | 稳定机器码，用于和糖果梦其他站点一致的设备绑定逻辑；同一客户端/设备应固定复用。 |
+| `Authorization` | 否 | 兼容形式：`Bearer USER_LICENSE_CODE`，适合只能配置 Bearer Token 的客户端。 |
+
+表单字段：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `file` | file | 推荐的单文件上传字段。 |
+| `files[]` | file[] | 推荐的批量上传字段，可重复传。 |
+| `image`、`smfile`、`source`、`files`、`upload`、`media` | file/file[] | 兼容 PicGo 和常见三方客户端字段。 |
+| `uploadFolder` | string | 可选上传目录/路径标签；别名：`folder`、`dir`、`directory`、`path`。 |
+| `uploadNameType` | string | 可选命名方式：`default`、`index`、`origin`、`short`。 |
+| `serverCompress` | boolean string | 传 `"false"` 可关闭 Telegram 服务端压缩。 |
+| `autoRetry` | boolean string | 传 `"false"` 可关闭自动重试。 |
+
+单文件示例：
+
+```bash
+curl -X POST "https://image.tgmeng.com/api/v1/upload" \
+  -H "X-License-Code: USER_LICENSE_CODE" \
+  -H "X-Machine-Id: USER_STABLE_MACHINE_ID" \
+  -F "file=@/path/to/image.png" \
+  -F "serverCompress=false"
+```
+
+批量示例：
+
+```bash
+curl -X POST "https://image.tgmeng.com/api/v1/upload" \
+  -H "X-License-Code: USER_LICENSE_CODE" \
+  -H "X-Machine-Id: USER_STABLE_MACHINE_ID" \
+  -F "files[]=@/path/to/a.png" \
+  -F "files[]=@/path/to/b.jpg"
+```
+
+返回示例：
+
+```json
+{
+  "success": true,
+  "partial": false,
+  "code": "success",
+  "message": "Upload success",
+  "url": "https://image.tgmeng.com/file/1749820000000_test.png",
+  "data": {
+    "url": "https://image.tgmeng.com/file/1749820000000_test.png",
+    "urls": ["https://image.tgmeng.com/file/1749820000000_test.png"],
+    "markdown": "![test.png](https://image.tgmeng.com/file/1749820000000_test.png)",
+    "html": "<img src=\"https://image.tgmeng.com/file/1749820000000_test.png\" alt=\"test.png\">"
+  },
+  "files": [
+    {
+      "success": true,
+      "name": "test.png",
+      "size": 12345,
+      "id": "1749820000000_test.png",
+      "url": "https://image.tgmeng.com/file/1749820000000_test.png",
+      "markdown": "![test.png](https://image.tgmeng.com/file/1749820000000_test.png)"
+    }
+  ]
+}
+```
+
+说明：
+
+- 图床上传要求密钥具备 BASIC 权限。
+- 文件归属按密钥记录，用户只能管理自己密钥上传的文件。
+- 已生成的 `/file/...` 外链是公开访问链接；密钥过期会阻止后续上传/管理，不会让已经发出去的外链自动失效。
+- Telegram 存储更适合图片和普通文件，100 MB 以内是更稳定的目标范围；几百 MB 可能慢或不稳定，不建议把它当公开视频存储。
+
 ## 常见错误
 
 | message | 说明 |
@@ -458,6 +554,11 @@ all, news, wool, media, tv, life, community, finance, stock, sports, technology,
 | `startTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd` | `startTime` 格式错误。 |
 | `endTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd` | `endTime` 格式错误。 |
 | `startTime must be before or equal to endTime` | 开始时间晚于结束时间。 |
+| `Invalid multipart/form-data request` | 图床上传请求不是合法的 multipart/form-data。 |
+| `No file provided` | 图床上传请求没有传任何支持的文件字段。 |
+| `Unauthorized` | 图床上传密钥、机器码或权限校验失败。 |
+| `Your IP is blocked` | 图床上传请求来源 IP 被保护规则拦截。 |
+| `File too large` | 上传文件超过当前限制。 |
 | 授权码校验异常 | 密钥无效、过期或缺少对应权限。 |
 
 注意：业务错误通常也可能以 HTTP 200 返回，所以调用方必须检查响应体里的 `code` 和 `message`。
@@ -534,11 +635,14 @@ all, news, wool, media, tv, life, community, finance, stock, sports, technology,
 
 当用户明确说“日报”“每日总结”“某天日报”“分类日报”“Markdown 正文”“整理日报内容”时，优先使用日报数据接口 `/api/skill/dailyNews`。
 
+当用户明确说“上传图片”“上传文件”“图床 API”“PicGo”“三方客户端上传”“批量上传”“生成图片外链”时，优先使用图床上传接口 `https://image.tgmeng.com/api/v1/upload`。
+
 当用户需求不明确时，例如只说“查热点”“看看热榜”“最近有什么热搜”“看看新闻总结”，智能体应先询问用户要使用哪种能力：
 
 1. 热榜数据搜索：查询原始新闻/热点数据，支持实时、今日、历史、关键词、根分类和时间窗口。
 2. 糖果指数查询：查询糖果指数榜单，返回标题、分类和 `hotScore`，适合按综合热度查看热点。
 3. 日报数据查询：查询已经生成好的糖果梦日报，支持日期、分类和正文 Markdown。
+4. 图床上传 API：上传本地图片/文件，返回公开链接、Markdown、HTML 和每个文件的上传状态。
 
 用户确认后再调用对应接口。
 
@@ -610,6 +714,18 @@ nextOffset = data.summary.offset + data.summary.returned
 7. 不要记录、展示或泄露完整 `license`。
 8. 权限失败时不要无限重试，应把错误信息反馈给调用者。
 
+### 图床上传 API
+
+智能体调用前应先做本地参数校验：
+
+1. `license` 必须是非空字符串，并通过 `X-License-Code` 或 `Authorization: Bearer ...` 放在 HTTPS Header 中。
+2. `X-Machine-Id` 必须是同一客户端/设备稳定复用的机器码，不要每次请求重新生成。
+3. 请求体必须是 `multipart/form-data`，至少包含一个支持的文件字段。
+4. 单文件优先使用 `file`，批量优先重复使用 `files[]`。
+5. 需要兼容 PicGo 或三方客户端时，可使用 `image`、`smfile`、`source`、`files`、`upload`、`media`。
+6. 返回 `partial: true` 时，应把成功和失败的文件分别说明。
+7. 不要记录、展示或泄露完整 `license`。
+
 ## 安全要求
 
 - 不要把用户密钥写死在 Skill 文件里。
@@ -617,6 +733,8 @@ nextOffset = data.summary.offset + data.summary.returned
 - 不要把密钥提交到 Git 仓库。
 - 外部智能体应通过运行时参数、环境变量或用户输入传入密钥。没有密钥时，引导用户前往 `https://wechat.tgmeng.com` 获取糖果梦通用密钥。
 - 密钥默认只具备 `REALTIME` 查询权限；需要 `TODAY` 或 `HISTORY` 权限时，联系管理员说明情况后开启。
+- 图床上传接口通过 HTTPS Header 传密钥，优先使用 `X-License-Code`；不要把密钥放在 URL、查询参数或 multipart 表单字段里。
+- 图床上传接口必须传稳定 `X-Machine-Id`，沿用糖果梦通用设备绑定逻辑。
 - 接口会记录调用排查信息，包括访问 IP、User-Agent、请求路径、错误信息和密钥。
 - `TODAY` 和 `HISTORY` 查询必须带关键词；`HISTORY` 查询可能较重。
 

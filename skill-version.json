@@ -1,18 +1,20 @@
 {
   "name": "tgmeng-news-skill",
-  "latestVersion": "2.1.0",
-  "updatedAt": "2026-05-20",
+  "latestVersion": "2.2.1",
+  "updatedAt": "2026-06-14",
   "changelogUrl": "https://github.com/tgmeng-com/tgmeng-news-skill/blob/main/CHANGELOG.md",
   "releaseNotes": [
-    "新增日报数据查询能力：POST https://trendapi.tgmeng.com/api/skill/dailyNews。",
-    "日报接口支持按 date、startDate、endDate、category 查询已生成日报，并可通过 withContent 控制是否返回正文 Markdown。",
-    "日报接口使用 SEARCH 权限，继续遵循 license 请求体传入、limit 默认 null、offset 续拉公式 nextOffset = data.summary.offset + data.summary.returned。",
-    "补充日报查询的 OpenAPI schema、详细契约、README 和智能体能力选择规则。"
+    "优化 Skill SEO 和可发现性：README 标题、适用场景、SKILL.md 触发描述、OpenAPI description 和 agents/openai.yaml 展示文案补充中英文关键词。",
+    "保留 2.2.0 新增的图床上传 API 能力：POST https://image.tgmeng.com/api/v1/upload。",
+    "图床上传继续支持 X-License-Code、Authorization Bearer、稳定 X-Machine-Id、multipart/form-data、PicGo/三方客户端字段兼容和批量上传。"
   ],
   "agentUsageTips": [
     "用户明确说糖果指数、指数榜、热度指数、AI 汇总榜或综合热度时，优先使用 /api/skill/index。",
     "用户明确说原始热搜、新闻热点、历史、关键词或时间窗口检索时，优先使用 /api/skill/search。",
     "用户明确说日报、每日总结、某天日报、分类日报、Markdown 正文或整理日报内容时，优先使用 /api/skill/dailyNews。",
+    "用户明确说上传图片、上传文件、图床 API、PicGo、三方客户端上传、批量上传或生成图片外链时，优先使用 https://image.tgmeng.com/api/v1/upload。",
+    "图床上传必须使用 multipart/form-data，并传 X-License-Code 或 Authorization Bearer，以及稳定复用的 X-Machine-Id。",
+    "图床上传单文件优先使用 file 字段，批量优先重复使用 files[] 字段；兼容 image、smfile、source、files、upload、media。",
     "日报查询里，用户要正文、Markdown、导出或学习材料时传 withContent: true；只看列表或元数据时可传 withContent: false。",
     "用户要当前全量实时热榜时，调用 /api/skill/search，传 mode: REALTIME、keywords: []、limit: null、offset: 0。",
     "rootCategories 文档列表是当前已知集合；平台分类可能扩展，继续筛选时优先参考实际返回的 items[].rootCategory。",

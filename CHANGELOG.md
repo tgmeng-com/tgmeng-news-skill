@@ -4,6 +4,29 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
 
+## [2.2.1] - 2026-06-14
+
+### Changed
+
+- 优化 Skill SEO 和可发现性，README 标题补充“糖果梦热榜 API、日报 API、图床上传 API 与智能体接入”等核心关键词。
+- README 新增“适用场景”，覆盖热榜 API、糖果指数 API、日报 API、PicGo 图床、第三方客户端上传、批量上传和 AI Agent 工具调用。
+- `SKILL.md` frontmatter description、`references/openapi.yaml` description 和 `agents/openai.yaml` 展示文案补充中英文触发词，方便智能体和搜索索引识别。
+
+## [2.2.0] - 2026-06-14
+
+### Added
+
+- 新增图床上传 API 能力，支持调用 `POST https://image.tgmeng.com/api/v1/upload` 上传图片/文件。
+- 图床上传支持 `X-License-Code`、`Authorization: Bearer ...`、稳定 `X-Machine-Id`、`multipart/form-data`、PicGo/三方客户端字段兼容和批量上传。
+- 上传响应文档新增 `url`、`data.url`、`data.urls`、`data.markdown`、`data.html` 和 `files[]` 单文件结果说明。
+- `references/openapi.yaml` 新增 `/api/v1/upload` 路径和对应请求、响应 schema。
+- `references/api-contract.md`、`README.md`、`SKILL.md` 和 `agents/openai.yaml` 新增图床上传的能力选择、参数契约、错误处理和调用示例。
+
+### Changed
+
+- Skill 能力说明从热榜数据搜索、糖果指数查询、日报数据查询扩展为热榜数据搜索、糖果指数查询、日报数据查询、图床上传 API 四类能力。
+- 智能体安全规则区分 JSON 查询接口的请求体密钥传递与图床上传接口的 Header 密钥传递方式。
+
 ## [2.1.0] - 2026-05-20
 
 ### Added
