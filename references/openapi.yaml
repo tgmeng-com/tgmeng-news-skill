@@ -15,7 +15,7 @@ paths:
         Search current, today, or historical Tgmeng in-site news and hotspot records.
         REALTIME requires SEARCH permission. TODAY and HISTORY require SKILLHISTORY permission.
         TODAY and HISTORY require at least one non-blank keyword.
-        Set limit to null by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit. Set offset to 0 by default; when continuing pagination, use nextOffset = data.summary.offset + data.summary.returned. Set distinct to false by default; use true only when the user asks to reduce duplicate titles or repeated reposts.
+        For TODAY and HISTORY, the server applies a default and maximum page size of 500. HISTORY must include startTime and endTime in the same calendar month. Set offset to 0 by default; when continuing pagination, use nextOffset = data.summary.offset + data.summary.returned and keep the same HISTORY month window. Set distinct to false by default; use true only when the user asks to reduce duplicate titles or repeated reposts.
         Self-healing retries should fix only the invalid field: use POST, JSON content type, a JSON object body, integer non-negative limit/offset, boolean distinct, and string-array keywords for raw search.
       requestBody:
         required: true
@@ -48,7 +48,7 @@ paths:
                   offset: 0
                   distinct: false
               today:
-                summary: Today search with default limit null
+                summary: Today search with server default page size
                 value:
                   license: USER_LICENSE_CODE
                   keywords:
@@ -62,7 +62,7 @@ paths:
                   offset: 0
                   distinct: false
               historyWithUserApprovedLimit:
-                summary: Historical search with user-approved limit
+                summary: Historical search within one calendar month
                 value:
                   license: USER_LICENSE_CODE
                   keywords:
@@ -299,7 +299,7 @@ components:
             - 'null'
           minimum: 0
           maximum: 2147483647
-          description: Maximum number of returned items. null means no client-side count limit by default, but actual returned count may still be bounded by current cache size, license permissions, and server-side protection limits. Agents must not set this field to a concrete number unless the user explicitly requested a count or confirmed a limit.
+          description: Maximum number of returned items. For REALTIME, null means no client-side count limit by default. For TODAY and HISTORY, null, omitted, or 0 means the server default page size of 500; concrete values must be between 0 and 500.
         offset:
           type:
             - integer
@@ -307,7 +307,7 @@ components:
           minimum: 0
           maximum: 2147483647
           default: 0
-          description: Result offset. Default is 0. Use with a user-approved limit to fetch later pages. The next page offset is always current offset plus data.summary.returned; for example, after limit 100 and offset 0 returns 100 items, request offset 100 next.
+          description: Result offset. Default is 0. For TODAY and HISTORY, use it to fetch later pages when data.summary.hasMore is true. The next page offset is always current offset plus data.summary.returned. HISTORY pagination must keep the same single-month window.
         distinct:
           type:
             - boolean
@@ -318,7 +318,7 @@ components:
           type:
             - string
             - 'null'
-          description: Optional inclusive time window start for TODAY and HISTORY. Ignored for REALTIME. Accepts yyyy-MM-dd HH:mm:ss or yyyy-MM-dd; date-only values are normalized to 00:00:00.
+          description: Optional for TODAY and required for HISTORY. Inclusive time window start for TODAY and HISTORY. Ignored for REALTIME. Accepts yyyy-MM-dd HH:mm:ss or yyyy-MM-dd; date-only values are normalized to 00:00:00. HISTORY must provide both startTime and endTime in the same calendar month.
           examples:
             - '2026-05-05 00:00:00'
             - '2026-05-05'
@@ -326,7 +326,7 @@ components:
           type:
             - string
             - 'null'
-          description: Optional inclusive time window end for TODAY and HISTORY. Ignored for REALTIME. Accepts yyyy-MM-dd HH:mm:ss or yyyy-MM-dd; date-only values are normalized to 23:59:59.
+          description: Optional for TODAY and required for HISTORY. Inclusive time window end for TODAY and HISTORY. Ignored for REALTIME. Accepts yyyy-MM-dd HH:mm:ss or yyyy-MM-dd; date-only values are normalized to 23:59:59. HISTORY must provide both startTime and endTime in the same calendar month.
           examples:
             - '2026-05-05 23:59:59'
             - '2026-05-05'
@@ -505,10 +505,10 @@ components:
       properties:
         total:
           type: integer
-          description: Matched item count after optional title deduplication and before pagination.
+          description: For REALTIME, matched item count after optional title deduplication and before pagination. For raw TODAY/HISTORY, current page returned count.
         rawTotal:
           type: integer
-          description: Matched item count before optional title deduplication.
+          description: For REALTIME, matched item count before optional title deduplication. For raw TODAY/HISTORY, current page returned count.
         returned:
           type: integer
           description: Number of items returned after offset and limit are applied.
@@ -516,7 +516,7 @@ components:
           type:
             - integer
             - 'null'
-          description: Requested limit. null or 0 means no limit.
+          description: Requested limit. For REALTIME, null or 0 means no client-side count limit; for raw TODAY/HISTORY, maximum 500.
         offset:
           type: integer
           description: Requested result offset.
@@ -601,7 +601,7 @@ components:
         query:
           $ref: '#/components/schemas/TgmengIndexQuery'
         summary:
-          $ref: '#/components/schemas/SkillSearchSummary'
+          $ref: '#/components/schemas/TgmengIndexSummary'
         items:
           type: array
           items:
@@ -635,6 +635,35 @@ components:
           type: array
           items:
             type: string
+    TgmengIndexSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Matched item count after optional title deduplication and before pagination.
+        rawTotal:
+          type: integer
+          description: Matched item count before optional title deduplication.
+        returned:
+          type: integer
+          description: Number of items returned after offset and limit are applied.
+        limit:
+          type:
+            - integer
+            - 'null'
+          description: Requested limit. null or 0 means no limit.
+        offset:
+          type: integer
+          description: Requested result offset.
+        duplicatesRemoved:
+          type: integer
+          description: Number of items removed by title deduplication. Zero when distinct is false.
+        hasMore:
+          type: boolean
+          description: true when more matched items remain after this response.
+        truncated:
+          type: boolean
+          description: Compatibility field with the same meaning as hasMore.
     TgmengIndexItem:
       type: object
       additionalProperties: true
@@ -809,7 +838,7 @@ components:
           type:
             - integer
             - 'null'
-          description: Requested limit. null or 0 means no limit.
+          description: Requested limit. null or 0 means no limit, but concrete values are capped by the Daily News maximum of 50.
         offset:
           type: integer
           description: Requested result offset.

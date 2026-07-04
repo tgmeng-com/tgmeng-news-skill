@@ -1,9 +1,10 @@
 {
   "name": "tgmeng-news-skill",
-  "latestVersion": "2.2.1",
-  "updatedAt": "2026-06-14",
+  "latestVersion": "2.2.2",
+  "updatedAt": "2026-07-04",
   "changelogUrl": "https://github.com/tgmeng-com/tgmeng-news-skill/blob/main/CHANGELOG.md",
   "releaseNotes": [
+    "热榜原始 TODAY/HISTORY 搜索同步服务端保护契约：默认/最大 500 条每页，HISTORY 必须传同一个自然月内的 startTime/endTime，超过 500 通过 offset 分页。",
     "优化 Skill SEO 和可发现性：README 标题、适用场景、SKILL.md 触发描述、OpenAPI description 和 agents/openai.yaml 展示文案补充中英文关键词。",
     "保留 2.2.0 新增的图床上传 API 能力：POST https://image.tgmeng.com/api/v1/upload。",
     "图床上传继续支持 X-License-Code、Authorization Bearer、稳定 X-Machine-Id、multipart/form-data、PicGo/三方客户端字段兼容和批量上传。"
@@ -17,6 +18,7 @@
     "图床上传单文件优先使用 file 字段，批量优先重复使用 files[] 字段；兼容 image、smfile、source、files、upload、media。",
     "日报查询里，用户要正文、Markdown、导出或学习材料时传 withContent: true；只看列表或元数据时可传 withContent: false。",
     "用户要当前全量实时热榜时，调用 /api/skill/search，传 mode: REALTIME、keywords: []、limit: null、offset: 0。",
+    "调用 /api/skill/search 的 TODAY/HISTORY 时，服务端默认/最大 500 条每页；HISTORY 必须传同一个自然月内的 startTime 和 endTime，不能跨月。",
     "rootCategories 文档列表是当前已知集合；平台分类可能扩展，继续筛选时优先参考实际返回的 items[].rootCategory。",
     "当用户希望减少搜索噪音时，可以把多个条件写在一个 keywords 项里，例如 伊朗+导弹-足球；热榜数据搜索和糖果指数查询都适用。",
     "如果用户没有明确要求返回条数，默认传 \"limit\": null；不要自行改成具体数字。",

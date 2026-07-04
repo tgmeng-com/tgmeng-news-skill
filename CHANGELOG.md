@@ -4,6 +4,15 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
 
+## [2.2.2] - 2026-07-04
+
+### Changed
+
+- 热榜原始 `TODAY`/`HISTORY` 搜索同步服务端保护契约：`limit` 不传、`null` 或 `0` 时默认一页最多 500 条，具体值最大 500。
+- `HISTORY` 搜索必须同时传 `startTime` 和 `endTime`，并且二者必须位于同一个自然月内，不能跨月。
+- 文档补充超过 500 条结果的 `offset = data.summary.offset + data.summary.returned` 分页方式，并说明 `HISTORY` 翻页时必须保持同一个月份窗口。
+- `SKILL.md`、`README.md`、`references/api-contract.md`、`references/openapi.yaml`、`agents/openai.yaml` 和 `skill-version.json` 同步更新上述调用规则。
+
 ## [2.2.1] - 2026-06-14
 
 ### Changed

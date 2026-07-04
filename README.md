@@ -128,11 +128,11 @@ tgmeng-news-skill 更新检查失败，可能是远程版本清单暂时无法�
 | `license` | string | 是 | 糖果梦通用密钥。由调用方传入，Skill 内不保存、不写死。没有密钥时，可前往 `https://wechat.tgmeng.com` 获取。 |
 | `keywords` | string[] | 是 | 关键词数组。多个关键词项之间保持 OR；单个关键词项内支持 `+`、`＋`、`&`、`＆` 表示必须包含，`-`、`－`、`!`、`！` 表示排除。`REALTIME` 可以为空数组，`TODAY` 和 `HISTORY` 必须至少包含一个非空关键词。当前全量实时热榜请传 `keywords: []`，不要传 `[""]`，也不要省略 `keywords`。 |
 | `mode` | enum | 是 | 查询模式，只能是 `REALTIME`、`TODAY`、`HISTORY`。 |
-| `startTime` | string/null | 否 | `TODAY` 和 `HISTORY` 的时间窗口开始时间，`REALTIME` 会忽略。支持 `yyyy-MM-dd HH:mm:ss` 或 `yyyy-MM-dd`，仅日期会补为当天 `00:00:00`。 |
-| `endTime` | string/null | 否 | `TODAY` 和 `HISTORY` 的时间窗口结束时间，`REALTIME` 会忽略。支持 `yyyy-MM-dd HH:mm:ss` 或 `yyyy-MM-dd`，仅日期会补为当天 `23:59:59`。 |
+| `startTime` | string/null | 否 | `TODAY` 可选，`HISTORY` 必填。时间窗口开始时间，`REALTIME` 会忽略。支持 `yyyy-MM-dd HH:mm:ss` 或 `yyyy-MM-dd`，仅日期会补为当天 `00:00:00`。`HISTORY` 必须同时传 `startTime` 和 `endTime`，且二者必须在同一个自然月内。 |
+| `endTime` | string/null | 否 | `TODAY` 可选，`HISTORY` 必填。时间窗口结束时间，`REALTIME` 会忽略。支持 `yyyy-MM-dd HH:mm:ss` 或 `yyyy-MM-dd`，仅日期会补为当天 `23:59:59`。`HISTORY` 必须同时传 `startTime` 和 `endTime`，且二者必须在同一个自然月内。 |
 | `rootCategories` | string[]/string/null | 否 | 按根分类过滤，精确匹配返回结果里的 `items[].rootCategory`。不传或为空表示不过滤。 |
-| `limit` | integer/null | 否 | 最大返回条数。默认传 `null` 表示不限制；接口也兼容不传或 `0` 表示不限制；负数非法。智能体不要自行添加、推断或缩小为具体数字，只有用户明确指定数量或确认限制条数后才可以传具体数字。 |
-| `offset` | integer/null | 否 | 结果偏移量，默认 `0`。配合用户确认过的 `limit` 获取后续页；下一页固定使用 `当前 offset + data.summary.returned`，例如 `limit: 100, offset: 0` 返回 `returned: 100` 后，下一页使用 `offset: 100`；负数非法。 |
+| `limit` | integer/null | 否 | 最大返回条数。`REALTIME` 默认传 `null` 表示不施加客户端条数限制；`TODAY` 和 `HISTORY` 中 `null`、不传或 `0` 会使用服务端默认页大小 `500`，具体值最大 `500`；负数非法。 |
+| `offset` | integer/null | 否 | 结果偏移量，默认 `0`。`TODAY` 和 `HISTORY` 如果 `data.summary.hasMore=true`，保持同样条件并使用 `当前 offset + data.summary.returned` 获取下一页；`HISTORY` 翻页时仍必须保持同一个自然月窗口；负数非法。 |
 | `distinct` | boolean/null | 否 | 是否按标题去重，默认 `false`。为 `true` 时，在关键词、分类、时间过滤之后、分页之前按规范化标题去重，保留当前排序中最靠前的一条；不使用 `simHash`。 |
 
 `rootCategories` 当前已知可选值：
@@ -148,8 +148,8 @@ tgmeng-news-skill 更新检查失败，可能是远程版本清单暂时无法�
 | mode | 含义 | 数据范围 | 权限要求 | keywords 要求 |
 | --- | --- | --- | --- | --- |
 | `REALTIME` | 实时数据 | 当前内存缓存热点 | `SEARCH` | 可以为空数组 |
-| `TODAY` | 今日数据 | 当天持久化历史数据 | `SKILLHISTORY` | 必须至少有一个非空关键词 |
-| `HISTORY` | 历史数据 | 长期持久化历史数据 | `SKILLHISTORY` | 必须至少有一个非空关键词 |
+| `TODAY` | 今日数据 | 当天持久化历史数据，可用当天内时间窗口缩小范围 | `SKILLHISTORY` | 必须至少有一个非空关键词 |
+| `HISTORY` | 历史数据 | 长期持久化历史数据，单次请求必须限制在同一个自然月内 | `SKILLHISTORY` | 必须至少有一个非空关键词，且必须传同月 startTime/endTime |
 
 注意：`mode` 只支持英文大写值，不支持中文。
 
@@ -193,9 +193,9 @@ tgmeng-news-skill 更新检查失败，可能是远程版本清单暂时无法�
 
 当 `mode` 不是 `REALTIME` 时，可以传 `startTime` 和 `endTime` 来缩小查询范围。这个能力适合用户明确想查某个小时、某半天、某几天内的热点时使用。
 
-- 只传 `startTime`：从开始时间查到当前时间。
-- 只传 `endTime`：使用当前模式默认开始时间，查到结束时间。
-- 两个都传：按指定闭区间查询。
+- `TODAY` 可以不传时间，默认从今天 00:00:00 查到当前时间；如果传时间，窗口必须仍在今天内。
+- `HISTORY` 必须同时传 `startTime` 和 `endTime`。
+- `HISTORY` 的开始和结束时间必须在同一个自然月内，不能跨月。
 - `startTime` 必须早于或等于 `endTime`。
 
 ## 返回格式
@@ -253,10 +253,10 @@ tgmeng-news-skill 更新检查失败，可能是远程版本清单暂时无法�
 | `data` | 智能体友好的搜索结果对象，包含 `query`、`summary`、`items`。 |
 | `data.query` | 本次查询信息，包括 `mode`、`keywords`、`permission`、`limit`、`offset`、`distinct`、`startTime`、`endTime`、`rootCategories`。 |
 | `data.summary` | 结果统计信息，包括 `total`、`rawTotal`、`returned`、`limit`、`offset`、`duplicatesRemoved`、`hasMore`、`truncated`。 |
-| `data.summary.total` | 当前返回策略下的命中总数。`distinct=true` 时是去重后的总数；否则等于 `rawTotal`。 |
-| `data.summary.rawTotal` | 按关键词、分类和时间过滤后的原始命中总数，去重前统计。 |
+| `data.summary.total` | `REALTIME` 为分页前命中总数；`TODAY/HISTORY` 为当前页返回数，是否还有后续以 `hasMore` 为准。`distinct=true` 时按标题去重。 |
+| `data.summary.rawTotal` | `REALTIME` 为去重前命中总数；`TODAY/HISTORY` 为当前页返回数。 |
 | `data.summary.returned` | 本次实际返回条数。 |
-| `data.summary.limit` | 本次请求的最大返回条数，`null` 或 `0` 表示不限制。 |
+| `data.summary.limit` | 本次请求的最大返回条数。`REALTIME` 中 `null` 或 `0` 表示不施加客户端条数限制；`TODAY/HISTORY` 最大为 `500`。 |
 | `data.summary.offset` | 本次请求的结果偏移量。 |
 | `data.summary.duplicatesRemoved` | `distinct=true` 时去掉的重复标题数量；未开启去重时为 `0`。 |
 | `data.summary.hasMore` | 是否还有后续结果；为 `true` 时可保持同样条件，并用 `data.summary.offset + data.summary.returned` 作为下一页 `offset`。 |
@@ -302,7 +302,7 @@ POST https://trendapi.tgmeng.com/api/skill/index
 | `keywords` | string[]/string/null | 否 | 关键词过滤。支持字符串数组或单个字符串；为空表示不过滤标题。多个关键词项之间保持 OR；单个关键词项内支持 `+`、`＋`、`&`、`＆` 表示必须包含，`-`、`－`、`!`、`！` 表示排除。 |
 | `categories` | string[]/string/null | 否 | 糖果指数分类过滤。也兼容 `category`、`type`、`platformCategory`、`分类` 这些入参名；为空表示查询全部分类。 |
 | `limit` | integer/null | 否 | 最大返回条数。默认传 `null` 表示不限制；接口也兼容不传或 `0` 表示不限制；负数非法。智能体不要自行添加、推断或缩小为具体数字，只有用户明确指定数量或确认限制条数后才可以传具体数字。 |
-| `offset` | integer/null | 否 | 结果偏移量，默认 `0`。配合用户确认过的 `limit` 获取后续页；下一页固定使用 `当前 offset + data.summary.returned`，例如 `limit: 100, offset: 0` 返回 `returned: 100` 后，下一页使用 `offset: 100`；负数非法。 |
+| `offset` | integer/null | 否 | 结果偏移量，默认 `0`。配合用户确认过的 `limit` 获取后续页；下一页固定使用 `当前 offset + data.summary.returned`；负数非法。 |
 | `distinct` | boolean/null | 否 | 是否按标题去重，默认 `false`。为 `true` 时，在关键词、分类过滤之后、分页之前按规范化标题去重，保留当前排序中最靠前的一条；不使用 `simHash`。 |
 
 `categories` 可选值：
@@ -542,6 +542,7 @@ curl -X POST "https://image.tgmeng.com/api/v1/upload" \
 | `参数keywords格式不正确，请传字符串数组` | `keywords` 不是字符串数组。 |
 | `limit must be integer` | `limit` 不是整数。 |
 | `limit must be greater than or equal to 0` | `limit` 是负数。 |
+| `limit must be less than or equal to 500` | 热榜原始 `TODAY/HISTORY` 查询的 `limit` 超过 500。 |
 | `limit is too large` | `limit` 超过最大整数范围。 |
 | `offset must be integer` | `offset` 不是整数。 |
 | `offset must be greater than or equal to 0` | `offset` 是负数。 |
@@ -554,6 +555,9 @@ curl -X POST "https://image.tgmeng.com/api/v1/upload" \
 | `startTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd` | `startTime` 格式错误。 |
 | `endTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd` | `endTime` 格式错误。 |
 | `startTime must be before or equal to endTime` | 开始时间晚于结束时间。 |
+| `HISTORY mode requires startTime and endTime` | `HISTORY` 模式必须同时传 `startTime` 和 `endTime`。 |
+| `HISTORY time window must be within the same calendar month` | `HISTORY` 模式时间窗口不能跨自然月。 |
+| `TODAY time window must be within today` | `TODAY` 模式时间窗口必须在当天内。 |
 | `Invalid multipart/form-data request` | 图床上传请求不是合法的 multipart/form-data。 |
 | `No file provided` | 图床上传请求没有传任何支持的文件字段。 |
 | `Unauthorized` | 图床上传密钥、机器码或权限校验失败。 |
@@ -648,7 +652,7 @@ curl -X POST "https://image.tgmeng.com/api/v1/upload" \
 
 ### limit 规则
 
-智能体不要自行添加、推断或缩小为具体数字。如果用户没有明确要求返回条数，默认传 `"limit": null` 表示不限制，不要自行改成具体数字。
+智能体不要自行添加、推断或缩小为具体数字。对 `REALTIME`、糖果指数和日报查询，如果用户没有明确要求返回条数，默认传 `"limit": null`。对热榜原始 `TODAY/HISTORY`，`limit: null` 会由服务端按一页最多 `500` 条处理。
 
 如果智能体因为性能、可读性、上下文长度或摘要需要想添加 `limit`，必须先询问用户并获得确认。
 
@@ -665,7 +669,7 @@ curl -X POST "https://image.tgmeng.com/api/v1/upload" \
 nextOffset = data.summary.offset + data.summary.returned
 ```
 
-不要用 `limit` 推导下一页，也不要在 `limit: null` 时猜测页大小。示例：
+不要用 `limit` 推导下一页，也不要在 `limit: null` 时猜测页大小；始终使用 `data.summary.offset + data.summary.returned`。热榜原始 `HISTORY` 翻页时必须保持同一个自然月窗口。示例：
 
 ```json
 {
@@ -695,7 +699,7 @@ nextOffset = data.summary.offset + data.summary.returned
 
 ### distinct 去重规则
 
-默认传 `"distinct": false`。当用户希望减少重复标题、通稿转载或 token 浪费时，可以传 `"distinct": true`。接口会在分页前按标题去重，保留当前排序中最靠前的一条；`data.summary.rawTotal` 是去重前数量，`data.summary.total` 是去重后数量。
+默认传 `"distinct": false`。当用户希望减少重复标题、通稿转载或 token 浪费时，可以传 `"distinct": true`。`REALTIME` 会在分页前按标题去重；热榜原始 `TODAY/HISTORY` 会在 SQL 查询阶段按标题去重并分页，返回统计为当前页范围。
 
 ### 错误自愈建议
 
@@ -709,7 +713,7 @@ nextOffset = data.summary.offset + data.summary.returned
 2. `keywords` 必须是字符串数组。
 3. `mode` 必须是 `REALTIME`、`TODAY` 或 `HISTORY`。
 4. 当 `mode = TODAY` 或 `mode = HISTORY` 时，`keywords` 必须至少包含一个非空字符串。
-5. 当用户指定非实时的时间范围时，优先使用 `startTime` 和 `endTime` 缩小查询范围。
+5. 当 `mode = HISTORY` 时，必须传同一个自然月内的 `startTime` 和 `endTime`；当 `mode = TODAY` 且用户指定时间范围时，窗口必须在今天内。
 6. 当用户要求某类新闻、热点或平台范围时，优先使用 `rootCategories`。
 7. 不要记录、展示或泄露完整 `license`。
 8. 权限失败时不要无限重试，应把错误信息反馈给调用者。
@@ -736,7 +740,7 @@ nextOffset = data.summary.offset + data.summary.returned
 - 图床上传接口通过 HTTPS Header 传密钥，优先使用 `X-License-Code`；不要把密钥放在 URL、查询参数或 multipart 表单字段里。
 - 图床上传接口必须传稳定 `X-Machine-Id`，沿用糖果梦通用设备绑定逻辑。
 - 接口会记录调用排查信息，包括访问 IP、User-Agent、请求路径、错误信息和密钥。
-- `TODAY` 和 `HISTORY` 查询必须带关键词；`HISTORY` 查询可能较重。
+- `TODAY` 和 `HISTORY` 查询必须带关键词；`HISTORY` 必须限定同一个自然月，不能跨月。
 
 ## 相关文件
 

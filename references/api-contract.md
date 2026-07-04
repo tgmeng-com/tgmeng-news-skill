@@ -60,11 +60,11 @@ Use the fixed production endpoint `https://trendapi.tgmeng.com/api/skill/search`
 | `license` | string | Yes | Tgmeng universal license code (糖果梦通用密钥) used for authorization. If the user does not have one, direct them to `https://wechat.tgmeng.com`. Never log or reveal it. |
 | `keywords` | string[] | Yes | Keyword array. Items are trimmed by the API. Blank items are ignored. Multiple keyword items use OR matching. Inside one item, `+`, `＋`, `&`, `＆` mean required include; `-`, `－`, `!`, `！` mean exclude. For a current full realtime feed, send `mode: "REALTIME"` with `keywords: []`; do not send `[""]` and do not omit `keywords`. `TODAY` and `HISTORY` require at least one non-blank keyword. |
 | `mode` | enum | Yes | One of `REALTIME`, `TODAY`, `HISTORY`. Case-sensitive. |
-| `startTime` | string/null | No | Inclusive time window start for `TODAY` and `HISTORY`. Ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`; date-only values are normalized to `00:00:00`. |
-| `endTime` | string/null | No | Inclusive time window end for `TODAY` and `HISTORY`. Ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`; date-only values are normalized to `23:59:59`. |
+| `startTime` | string/null | No | Optional for `TODAY`; required for `HISTORY`. Inclusive time window start for `TODAY` and `HISTORY`. Ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`; date-only values are normalized to `00:00:00`. `HISTORY` must provide both `startTime` and `endTime`, and both must be in the same calendar month. |
+| `endTime` | string/null | No | Optional for `TODAY`; required for `HISTORY`. Inclusive time window end for `TODAY` and `HISTORY`. Ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`; date-only values are normalized to `23:59:59`. `HISTORY` must provide both `startTime` and `endTime`, and both must be in the same calendar month. |
 | `rootCategories` | string[]/string/null | No | Filter by root category, matching `items[].rootCategory` exactly. Empty or omitted means all root categories. |
-| `limit` | integer/null | No | Maximum returned items. Use `null` by default to mean no limit. The API also accepts omitted or `0` as no limit. Negative values are invalid. Do not set a concrete number unless the user explicitly requested a count or confirmed a limit. |
-| `offset` | integer/null | No | Result offset. Default is `0`. Use with a user-approved `limit` to fetch later pages. The next page offset is always `current offset + data.summary.returned`; for example, after requesting `limit: 100, offset: 0` and receiving `returned: 100`, request the next page with `offset: 100`. Negative values are invalid. |
+| `limit` | integer/null | No | Maximum returned items. For `REALTIME`, use `null` by default to mean no client-side count limit. For raw `TODAY` and `HISTORY`, `null`, omitted, or `0` means the server default page size of 500; concrete values must be between 0 and 500. Negative values are invalid. |
+| `offset` | integer/null | No | Result offset. Default is `0`. For raw `TODAY` and `HISTORY`, use it to fetch later pages when `data.summary.hasMore` is true. The next page offset is always `current offset + data.summary.returned`; for raw `HISTORY`, keep the same single-month window. Negative values are invalid. |
 | `distinct` | boolean/null | No | Whether to deduplicate by normalized title. Default is `false`. When `true`, deduplication runs after filters and before pagination, keeps the first item in the existing sort order, and does not use simHash. |
 
 Currently known `rootCategories` values:
@@ -80,8 +80,8 @@ The platform may add or adjust root categories over time. Treat this list as the
 | Mode | Data source | Permission | Keyword rule |
 | --- | --- | --- | --- |
 | `REALTIME` | Current in-memory cache | `SEARCH` | May be empty. |
-| `TODAY` | Today's persisted history | `SKILLHISTORY` | Must contain at least one non-blank keyword. |
-| `HISTORY` | Long-term persisted history | `SKILLHISTORY` | Must contain at least one non-blank keyword. |
+| `TODAY` | Today's persisted history, optionally narrowed by a same-day window | `SKILLHISTORY` | Must contain at least one non-blank keyword. |
+| `HISTORY` | Long-term persisted history within one calendar month | `SKILLHISTORY` | Must contain at least one non-blank keyword and same-month `startTime`/`endTime`. |
 
 Licenses include the `SEARCH` permission required by `REALTIME` by default. To use `TODAY` or `HISTORY`, contact the administrator, explain the use case, and request `SKILLHISTORY` permission.
 
@@ -89,9 +89,7 @@ For a current full realtime feed, call `REALTIME` with `keywords: []`, `limit: n
 
 ### Time Window
 
-`TODAY` and `HISTORY` support optional `startTime` and `endTime` for more precise historical retrieval. When omitted, the API keeps the existing default range for that mode. `REALTIME` always reads the current in-memory cache and ignores time-window fields.
-
-If only `startTime` is provided, the API searches from that time to now. If only `endTime` is provided, the API uses the mode's default start time and the provided end time. `startTime` must be before or equal to `endTime`.
+`TODAY` supports optional `startTime` and `endTime`; omitted values default to today's start and the current time, and any provided window must stay within today. `HISTORY` requires both `startTime` and `endTime`, and both must be in the same calendar month. `REALTIME` always reads the current in-memory cache and ignores time-window fields. `startTime` must be before or equal to `endTime`.
 
 ### Matching
 
@@ -132,7 +130,7 @@ Root category filters are AND-style with keyword matching. If `rootCategories` i
 }
 ```
 
-`code = 200` means success. For all other codes, treat the call as failed and display or summarize `message`. On success, read results from `data.items`, query metadata from `data.query`, and pagination status from `data.summary`. `data.items` is ordered by update time from newest to oldest, so earlier items are newer, rather than being sorted by hotspot popularity weight. This helps agents understand the result ordering logic. If `data.summary.hasMore` is true, keep the same filters and set the next request's `offset` to `data.summary.offset + data.summary.returned`. Do not derive the next offset from `limit`, especially when `limit` is `null` or the API returns fewer items than requested. When `distinct` is true, `data.summary.total` is the deduplicated total and `data.summary.rawTotal` is the pre-deduplication total.
+`code = 200` means success. For all other codes, treat the call as failed and display or summarize `message`. On success, read results from `data.items`, query metadata from `data.query`, and pagination status from `data.summary`. `data.items` is ordered by update time from newest to oldest, so earlier items are newer, rather than being sorted by hotspot popularity weight. This helps agents understand the result ordering logic. If `data.summary.hasMore` is true, keep the same filters and set the next request's `offset` to `data.summary.offset + data.summary.returned`. For raw `HISTORY`, the next page must keep the same single-month window. Do not derive the next offset from `limit`, especially when `limit` is `null` or the API returns fewer items than requested. When `distinct` is true, `REALTIME` reports deduplicated totals; raw `TODAY/HISTORY` totals are page-scoped.
 
 ### Raw Search Data Fields
 
@@ -141,16 +139,16 @@ Root category filters are AND-style with keyword matching. If `rootCategories` i
 | `data.query.mode` | enum | Search mode used by the request. |
 | `data.query.keywords` | string[] | Sanitized keyword array used by the request. |
 | `data.query.permission` | string | Permission checked for this mode: `SEARCH` or `SKILLHISTORY`. |
-| `data.query.limit` | integer/null | Requested limit. `null` or `0` means no limit. |
+| `data.query.limit` | integer/null | Requested limit. For `REALTIME`, `null` or `0` means no client-side count limit; for raw `TODAY/HISTORY`, the maximum page size is 500. |
 | `data.query.offset` | integer | Requested result offset. |
 | `data.query.distinct` | boolean | Whether title deduplication was enabled. |
 | `data.query.startTime` | string/null | Normalized time-window start used by the query. |
 | `data.query.endTime` | string/null | Normalized time-window end used by the query. |
 | `data.query.rootCategories` | string[]/null | Root category filters used by the query. |
-| `data.summary.total` | integer | Matched item count after optional title deduplication and before pagination. |
-| `data.summary.rawTotal` | integer | Matched item count before optional title deduplication. |
+| `data.summary.total` | integer | For `REALTIME`, matched item count after optional title deduplication and before pagination. For raw `TODAY/HISTORY`, current page returned count. |
+| `data.summary.rawTotal` | integer | For `REALTIME`, matched item count before optional title deduplication. For raw `TODAY/HISTORY`, current page returned count. |
 | `data.summary.returned` | integer | Returned item count after `offset` and `limit`. |
-| `data.summary.limit` | integer/null | Requested limit. `null` or `0` means no limit. |
+| `data.summary.limit` | integer/null | Requested limit. For `REALTIME`, `null` or `0` means no client-side count limit; for raw `TODAY/HISTORY`, maximum 500. |
 | `data.summary.offset` | integer | Requested result offset. |
 | `data.summary.duplicatesRemoved` | integer | Number of items removed by title deduplication. Zero when `distinct` is false. |
 | `data.summary.hasMore` | boolean | Whether more matched results remain after this response. |
@@ -397,12 +395,12 @@ Reports are ordered by `reportDate` from newest to oldest, then by id from newes
 | `data.query.date` | string/null | Exact report date used by the request. |
 | `data.query.startDate` | string/null | Report-date range start used by the request. |
 | `data.query.endDate` | string/null | Report-date range end used by the request. |
-| `data.query.limit` | integer/null | Requested limit. `null` or `0` means no limit. |
+| `data.query.limit` | integer/null | Requested limit. `null` or `0` means no limit, but concrete values are capped by the Daily News maximum of 50. |
 | `data.query.offset` | integer | Requested result offset. |
 | `data.query.withContent` | boolean | Whether Markdown content was requested. |
 | `data.summary.total` | integer | Matched report count before pagination. |
 | `data.summary.returned` | integer | Returned report count after `offset` and `limit`. |
-| `data.summary.limit` | integer/null | Requested limit. `null` or `0` means no limit. |
+| `data.summary.limit` | integer/null | Requested limit. `null` or `0` means no limit, but concrete values are capped by the Daily News maximum of 50. |
 | `data.summary.offset` | integer | Requested result offset. |
 | `data.summary.hasMore` | boolean | Whether more matched reports remain after this response. |
 | `data.summary.truncated` | boolean | Compatibility field with the same meaning as `hasMore`. |
@@ -550,6 +548,7 @@ Common parameter errors:
 | `TODAY/HISTORY mode keywords empty error` | Raw search `mode = TODAY` or `mode = HISTORY` but keywords is empty or blank-only. |
 | `limit must be integer` | `limit` is not an integer. |
 | `limit must be greater than or equal to 0` | `limit` is negative. |
+| `limit must be less than or equal to 500` | Raw `TODAY/HISTORY` concrete limit is larger than 500. |
 | `limit is too large` | `limit` is greater than the maximum supported integer. |
 | `offset must be integer` | `offset` is not an integer. |
 | `offset must be greater than or equal to 0` | `offset` is negative. |
@@ -568,6 +567,9 @@ Common parameter errors:
 | `startTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd` | `startTime` format is invalid. |
 | `endTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd` | `endTime` format is invalid. |
 | `startTime must be before or equal to endTime` | Time window is reversed. |
+| `HISTORY mode requires startTime and endTime` | Raw `HISTORY` must provide both `startTime` and `endTime`. |
+| `HISTORY time window must be within the same calendar month` | Raw `HISTORY` time window crosses calendar months. |
+| `TODAY time window must be within today` | Raw `TODAY` time window is outside today. |
 | `Invalid multipart/form-data request` | Image upload body is not valid multipart form data. |
 | `No file provided` | Image upload request did not include any supported file field. |
 | `File too large` | Uploaded file exceeds the current upload limit. |
@@ -592,7 +594,8 @@ Common permission errors:
 - Diagnostics may record request metadata such as IP address, User-Agent, request path, error message, and license.
 - Do not retry aggressively on authorization failures.
 - Do not call raw `TODAY` or `HISTORY` without a keyword.
-- Set `limit` to `null` by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit.
+- Set `limit` to `null` by default. For raw `TODAY/HISTORY`, the server will treat it as one page of up to 500 items; use `offset` pagination for more.
+- For raw `HISTORY`, always provide `startTime` and `endTime` in the same calendar month.
 - Set `offset` to `0` by default. Continue pagination only when `data.summary.hasMore` is true, using `nextOffset = data.summary.offset + data.summary.returned`.
 - Set `distinct` to `false` by default. Use `distinct: true` only when the user asks to reduce duplicate titles, repeated wire copy, reposts, or token waste from duplicated results.
 - For Daily News, use `date` for exact-day report requests, or `startDate` and `endDate` for date ranges. Use `withContent: true` when the user wants report body or Markdown; use `withContent: false` for lists or metadata.

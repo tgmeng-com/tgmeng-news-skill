@@ -93,16 +93,11 @@ Ask the user which capability they want to use, then call the matching endpoint.
 
 ### Limit Handling
 
-Do not infer, add, or reduce a concrete `limit` automatically.
+Do not infer, add, or reduce a concrete `limit` automatically for APIs that do not have a server-side page cap.
 
-If the user did not explicitly request a result count, set `limit` to `null` by default, which means no limit. Do not change it to a concrete number without user confirmation.
+For raw `TODAY` and `HISTORY` hotspot search, the server protects the query with a default and maximum page size of 500. If the user did not explicitly request a result count, set `limit` to `null`; the server will treat it as one page of up to 500 items. If the user requests more than 500 raw `TODAY` or `HISTORY` results, use `offset` pagination with the same filters instead of sending a larger `limit`.
 
-If an agent wants to add `limit` for performance, readability, token budget, or summarization reasons, it must ask the user first and get confirmation.
-
-Only set `limit` to a concrete number when:
-
-- the user explicitly specifies a count, such as "top 10", "return 20", "只要前 5 条";
-- or the user confirms the agent's clarification question about limiting result count.
+For raw `REALTIME`, Tgmeng Index, and Daily News, keep the existing rule: use `limit: null` by default and do not set a concrete number unless the user explicitly requests a count or confirms a limit.
 
 ## Raw Hotspot Search
 
@@ -133,11 +128,11 @@ Parameter contract:
 - `license`: string. Required. Tgmeng universal license code (糖果梦通用密钥). If the user does not have one, direct them to https://wechat.tgmeng.com to obtain it. Do not log, expose, or hard-code it.
 - `keywords`: string array. Required by schema. Empty arrays are allowed only for `REALTIME`; `TODAY` and `HISTORY` require at least one non-blank keyword. For a current full realtime feed, send `mode: "REALTIME"` with `keywords: []`; do not send `[""]` and do not omit `keywords`. Multiple keyword items use OR matching. Inside one keyword item, `+`, `＋`, `&`, `＆` mean required include, and `-`, `－`, `!`, `！` mean exclude. Example: `伊朗+导弹-足球` means the title must contain `伊朗` and `导弹`, and must not contain `足球`.
 - `mode`: enum string. Required. Must be exactly one of `REALTIME`, `TODAY`, or `HISTORY`.
-- `startTime`: string or null. Optional. Inclusive time window start for `TODAY` and `HISTORY`; ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`. Date-only values are normalized to `00:00:00`.
-- `endTime`: string or null. Optional. Inclusive time window end for `TODAY` and `HISTORY`; ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`. Date-only values are normalized to `23:59:59`.
+- `startTime`: string or null. Optional for `TODAY`; required for `HISTORY`. Inclusive time window start for `TODAY` and `HISTORY`; ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`. Date-only values are normalized to `00:00:00`. `HISTORY` must provide both `startTime` and `endTime`, and both must be in the same calendar month.
+- `endTime`: string or null. Optional for `TODAY`; required for `HISTORY`. Inclusive time window end for `TODAY` and `HISTORY`; ignored for `REALTIME`. Accepts `yyyy-MM-dd HH:mm:ss` or `yyyy-MM-dd`. Date-only values are normalized to `23:59:59`. `HISTORY` must provide both `startTime` and `endTime`, and both must be in the same calendar month.
 - `rootCategories`: string array or string. Optional. Filter by root category, matching the `items[].rootCategory` field exactly. Empty or omitted means all root categories.
-- `limit`: integer or null. Optional. Maximum number of returned items. Use `null` by default to mean no limit. The API also accepts omitted or `0` as no limit. Negative values are invalid. Do not set a concrete number unless the user explicitly requested a count or confirmed a limit.
-- `offset`: integer or null. Optional. Result offset. Use `0` by default. Use it with a user-approved `limit` to fetch later pages. The next page offset is always `current offset + data.summary.returned`; for example, after requesting `limit: 100, offset: 0` and receiving `returned: 100`, the next request should use `offset: 100`. Negative values are invalid.
+- `limit`: integer or null. Optional. For `REALTIME`, use `null` by default to mean no client-side count limit. For raw `TODAY` and `HISTORY`, `null`, omitted, or `0` means the server default page size of 500; concrete values must be between 0 and 500. Negative values are invalid.
+- `offset`: integer or null. Optional. Result offset. Use `0` by default. For raw `TODAY` and `HISTORY`, use it to fetch later pages when `data.summary.hasMore` is true. The next page offset is always `current offset + data.summary.returned`; for example, after receiving `returned: 500`, the next request should use `offset: 500`. Negative values are invalid.
 - `distinct`: boolean or null. Optional. Default is `false`. When `true`, the API deduplicates by normalized title after keyword/category/time filtering and before pagination, keeping the first item in the existing sort order. It does not use simHash.
 
 Currently known `rootCategories` values:
@@ -151,8 +146,8 @@ The platform may add or adjust root categories over time. Treat this list as the
 Mode behavior:
 
 - `REALTIME`: Query current in-memory hotspot cache. Requires `SEARCH` license permission.
-- `TODAY`: Query today's persisted hotspot history, optionally narrowed by `startTime` and `endTime`. Requires `SKILLHISTORY` license permission and non-empty `keywords`.
-- `HISTORY`: Query long-term persisted hotspot history, optionally narrowed by `startTime` and `endTime`. Requires `SKILLHISTORY` license permission and non-empty `keywords`.
+- `TODAY`: Query today's persisted hotspot history, optionally narrowed by a same-day `startTime` and `endTime`. Requires `SKILLHISTORY` license permission and non-empty `keywords`.
+- `HISTORY`: Query long-term persisted hotspot history within one calendar month. Requires `SKILLHISTORY` license permission, non-empty `keywords`, and both `startTime` and `endTime` in the same month.
 
 For a current full realtime feed, call `REALTIME` with `keywords: []`, `limit: null`, and `offset: 0`. `limit: null` means the agent is not applying a client-side count limit; the actual returned count is still bounded by the current realtime cache size, license permissions, and any server-side protection limits. Use `data.summary.returned`, `data.summary.total`, and `data.summary.hasMore` to understand the returned size.
 
@@ -161,7 +156,7 @@ Licenses have `SEARCH` permission for `REALTIME` by default. If the user needs `
 Keyword matching keeps backward-compatible OR-style matching between keyword array items. A single keyword item may use lightweight expressions: `+`, `＋`, `&`, `＆` require included terms, while `-`, `－`, `!`, `！` exclude terms. For example, `伊朗+导弹-足球` means the title must contain `伊朗` and `导弹`, and must not contain `足球`; `股票＆黄金！AI` means the title must contain `股票` and `黄金`, and must not contain `AI`.
 Root category filtering is AND-style with keyword matching: an item must match the requested `rootCategories` if the filter is provided. Multiple root category values use OR matching.
 
-For non-realtime modes, if only `startTime` is provided, the API searches from that time to now. If only `endTime` is provided, the API uses the mode's default start time and the provided end time. `startTime` must be before or equal to `endTime`.
+For `TODAY`, omitted times default to today's start and the current time; any provided window must stay within today. For `HISTORY`, always provide both `startTime` and `endTime`, keep them in the same calendar month, and ensure `startTime` is before or equal to `endTime`.
 
 ### Raw Hotspot Response
 
@@ -207,7 +202,7 @@ For non-realtime modes, if only `startTime` is provided, the API searches from t
 }
 ```
 
-Treat `data.items` as the result list. Items are ordered by update time from newest to oldest; earlier items in the array are newer, rather than being sorted by hotspot popularity weight. This helps agents understand the result ordering logic. Use `data.query` to understand what was searched and `data.summary.hasMore` to detect whether more results are available. `data.summary.truncated` is kept for compatibility and has the same meaning as `hasMore`. If `hasMore` is true and the user wants more results, keep the same filters and set the next request's `offset` to `data.summary.offset + data.summary.returned`. For example, if the current response has `offset: 100` and `returned: 100`, the next request should use `offset: 200`. When `distinct` is true, `data.summary.total` is the deduplicated total and `data.summary.rawTotal` is the pre-deduplication total. Some item fields may be absent or null depending on source and mode.
+Treat `data.items` as the result list. Items are ordered by update time from newest to oldest; earlier items in the array are newer, rather than being sorted by hotspot popularity weight. This helps agents understand the result ordering logic. Use `data.query` to understand what was searched and `data.summary.hasMore` to detect whether more results are available. `data.summary.truncated` is kept for compatibility and has the same meaning as `hasMore`. If `hasMore` is true and the user wants more results, keep the same filters and set the next request's `offset` to `data.summary.offset + data.summary.returned`. For raw `HISTORY`, the next page must keep the same single-month window. Do not derive the next offset from `limit`, especially when `limit` is `null` or the API returns fewer items than requested. When `distinct` is true, `REALTIME` reports deduplicated totals; raw `TODAY` and `HISTORY` are server-paged and their totals are page-scoped. Some item fields may be absent or null depending on source and mode.
 
 ## Tgmeng Index Search
 
@@ -510,6 +505,7 @@ Common parameter errors:
 - `参数keywords格式不正确，请传字符串数组`: `keywords` is not a valid JSON array or accepted string form.
 - `limit must be integer`: `limit` is not an integer.
 - `limit must be greater than or equal to 0`: `limit` is negative.
+- `limit must be less than or equal to 500`: raw `TODAY/HISTORY` concrete limit is larger than 500.
 - `limit is too large`: `limit` is greater than the maximum supported integer.
 - `offset must be integer`: `offset` is not an integer.
 - `offset must be greater than or equal to 0`: `offset` is negative.
@@ -529,6 +525,9 @@ Common parameter errors:
 - `startTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd`: `startTime` format is invalid.
 - `endTime format error, expected yyyy-MM-dd HH:mm:ss or yyyy-MM-dd`: `endTime` format is invalid.
 - `startTime must be before or equal to endTime`: time window is reversed.
+- `HISTORY mode requires startTime and endTime`: raw `HISTORY` must provide both `startTime` and `endTime`.
+- `HISTORY time window must be within the same calendar month`: raw `HISTORY` crosses calendar months.
+- `TODAY time window must be within today`: raw `TODAY` time window is outside today.
 
 Common authorization errors:
 
@@ -553,7 +552,7 @@ Common image upload HTTP errors:
 3. Validate `license` locally before calling the API.
 4. Set `limit` to `null` by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit.
 5. For raw `TODAY` and `HISTORY`, require at least one non-blank keyword.
-6. For raw `TODAY` or `HISTORY`, pass `startTime` and `endTime` when the user asks for a precise period.
+6. For raw `TODAY`, keep any supplied time window within today. For raw `HISTORY`, always pass both `startTime` and `endTime` in the same calendar month.
 7. For Daily News, use `date` for exact-day report requests, or `startDate` and `endDate` for report-date ranges.
 8. For Daily News, set `withContent` to `true` when the user wants report body or Markdown; set it to `false` only for report lists or metadata.
 9. For Image/file upload, require at least one file path/blob and a stable `X-Machine-Id`; send `multipart/form-data`, not JSON.
