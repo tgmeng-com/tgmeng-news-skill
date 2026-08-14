@@ -4,6 +4,28 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
 
+## [2.3.1] - 2026-08-10
+
+### Changed
+
+- 招采 `REALTIME` 改为按来源返回最新可用数据；当天无公告时展示最近有效日期的完整公告，`TODAY/HISTORY` 仍严格遵守时间范围。
+- `sourceStatuses` 新增来源级 `dataScope`、`latestPublicationDate`、`fallbackToLatest`，汇总新增各新鲜度来源数量。
+- 智能体必须保留公告真实 `publishedAt`，不得把 `LATEST_AVAILABLE` 或 `STALE_CACHE` 描述成今日公告。
+
+## [2.3.0] - 2026-08-09
+
+### Added
+
+- 新增独立招采数据能力 `POST /api/skill/procurement/search`，覆盖政府采购、公共资源交易、央国企和专业采购公告。
+- 新增来源编码/平台组、地区、记录族、官网类型、生命周期、结果状态、采购方式和交易方式筛选。
+- 返回完整公告字段与 `sourceStatuses`，明确 `HAS_DATA`、`NO_DATA`、最后采集时间和有效缓存时间语义。
+
+### Changed
+
+- 热榜与招采使用独立业务契约；招采不再通过热榜根分类返回。
+- 招采复用原有 `SEARCH`/`SKILLHISTORY` 权限、QPM/QPD 和统一用量统计。
+- `SKILL.md`、README、API Contract、OpenAPI 和智能体提示同步五类能力选择、分页及密钥安全规则。
+
 ## [2.2.2] - 2026-07-04
 
 ### Changed

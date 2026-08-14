@@ -2,7 +2,7 @@
 
 ## Purpose
 
-Expose Tgmeng in-site news, hotspot search, Tgmeng Index search, generated daily news reports, and TGMENG image/file upload to external intelligent agents. This skill is a contract wrapper around remote HTTP APIs and does not store license credentials.
+Expose Tgmeng in-site news, hotspot search, procurement notice search, Tgmeng Index search, generated daily news reports, and TGMENG image/file upload to external intelligent agents. This skill is a contract wrapper around remote HTTP APIs and does not store license credentials.
 
 ## Agent Behavior Rules
 
@@ -10,13 +10,15 @@ Expose Tgmeng in-site news, hotspot search, Tgmeng Index search, generated daily
 
 Use raw hotspot search when the user clearly asks for original news/hotspot records, keyword search, realtime records, today's records, historical records, root categories, or a time-window search.
 
+Use procurement notice search when the user asks for 招采、招标、投标、政府采购、公共资源交易、央国企采购、采购意向、中标/成交结果、项目编号、采购人或代理机构。Do not request procurement through raw hotspot root categories.
+
 Use Tgmeng Index search when the user clearly asks for 糖果指数, index lists, 热度指数, AI-generated ranking, 综合热度, or cached Tgmeng Index data.
 
 Use Daily News query when the user clearly asks for 日报, 每日总结, daily report, generated report content, category daily report, report Markdown, a report for a specific date, or a date-range list of generated reports.
 
 Use Image/file upload when the user clearly asks to upload images or files, use the TGMENG image bed, integrate PicGo or another third-party upload client, batch upload, generate hosted image URLs, or call the public image upload API.
 
-If the user's request is ambiguous, such as "查热点", "看看热榜", "最近有什么热搜", or "看看新闻总结", ask a short clarification before calling any API. Explain that raw hotspot search queries original news/hotspot data, Tgmeng Index search queries AI-generated and cached index lists with `hotScore`, Daily News query returns already generated daily reports with optional Markdown content, and Image/file upload sends local files to the TGMENG image bed and returns public links.
+If the user's request is ambiguous, ask a short clarification before calling any API. Explain that raw hotspot search queries news/hotspot data, procurement search returns structured bidding and purchasing notices, Tgmeng Index returns AI-ranked lists with `hotScore`, Daily News returns generated reports, and Image/file upload sends local files to the TGMENG image bed.
 
 ### Limit Handling
 
@@ -167,7 +169,55 @@ Root category filters are AND-style with keyword matching. If `rootCategories` i
 | `rank` | number/null | Source ranking order. |
 | `simHash` | number/null | Historical similarity hash when available. |
 
-## Operation 2: Tgmeng Index Search
+## Operation 2: Procurement Notice Search
+
+`searchTgmengProcurement`
+
+```text
+POST https://trendapi.tgmeng.com/api/skill/procurement/search
+Content-Type: application/json
+```
+
+The endpoint is independent from raw hotspot search but reuses the same license contract, permissions, rate limit, and usage quota. `REALTIME` requires `SEARCH`; `TODAY/HISTORY` require `SKILLHISTORY`. `REALTIME` returns the latest available data independently for each source; `TODAY` and `HISTORY` remain strict time-range queries.
+
+### Request
+
+```json
+{
+  "license": "USER_LICENSE_CODE",
+  "keywords": ["办公设备-更正"],
+  "mode": "REALTIME",
+  "startTime": null,
+  "endTime": null,
+  "sourceCodes": [],
+  "sourceGroups": ["政府采购"],
+  "provinces": ["北京市"],
+  "cities": [],
+  "recordFamilies": [],
+  "originalTypes": [],
+  "lifecycleStages": [],
+  "outcomeStatuses": [],
+  "procurementMethods": [],
+  "transactionMethods": [],
+  "limit": null,
+  "offset": 0,
+  "distinct": false
+}
+```
+
+`keywords` must be a string array. It may be empty only for `REALTIME`. Filter fields accept a string or string array; fields combine with AND and values inside one array combine with OR. Keywords search title, project number, purchaser, agency, organization, source/type/family, region, and `searchText`.
+
+Time, limit, offset, distinct, single-month HISTORY protection, and next-offset rules match raw hotspot search. `TODAY/HISTORY` default and maximum page size is 500.
+
+### Response
+
+The standard response uses `data.query`, `data.summary`, `data.sourceStatuses`, and `data.items`. Unlike the raw hotspot API, `total` and `rawTotal` represent complete filtered counts in all modes.
+
+`sourceStatuses` describes the current cache even in historical responses. Freshness is source-level: the same response can contain `TODAY`, `LATEST_AVAILABLE`, and `STALE_CACHE`. `HAS_DATA` means the last successful collection returned today's notices. `NO_DATA` means collection succeeded but today has no new notices; it is not a failure. Read `dataScope`, `latestPublicationDate`, and `fallbackToLatest`, and keep using each item's real `publishedAt`. Empty collection retains the last valid items, so `dataCount` may remain non-zero and `dataUpdateTime` may be earlier than `lastCollectionTime`.
+
+Each item preserves the full procurement model: `id`, `title`, `url`, `source`, `sourceCode`, `sourceGroup`, `sourceLevel`, `sourceChannel`, `originalCategory`, `originalType`, `originalTypeCode`, `recordFamily`, `domains`, `industries`, `subjectTypes`, `procurementMethods`, `transactionMethods`, `procurementChannels`, `lifecycleStage`, `noticeActions`, `outcomeStatus`, `specialTopics`, `region`, `province`, `city`, `district`, `projectNumber`, `purchaser`, `agency`, `organization`, `amount`, `currency`, `publishedAt`, `deadlineAt`, `searchText`, and `sourceAttributes`. Missing source facts remain empty/null and must not be inferred from titles.
+
+## Operation 3: Tgmeng Index Search
 
 `searchTgmengIndex`
 
@@ -283,7 +333,7 @@ Unknown categories are ignored. If no valid category remains, the API queries al
 | `publishedAt` | string/null | Index list update time, usually `yyyy-MM-dd HH:mm:ss`. |
 | `hotScore` | integer/null | Tgmeng Index heat value. Larger values mean higher heat. |
 
-## Operation 3: Daily News Query
+## Operation 4: Daily News Query
 
 `queryDailyNews`
 
@@ -429,7 +479,7 @@ Reports are ordered by `reportDate` from newest to oldest, then by id from newes
 | `durationMs` | integer/null | Total report-generation task duration in milliseconds. |
 | `contentMarkdown` | string/null | Report body Markdown. Null when `withContent` is false. |
 
-## Operation 4: Image/File Upload
+## Operation 5: Image/File Upload
 
 `uploadImageFile`
 

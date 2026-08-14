@@ -1,12 +1,13 @@
-# Tgmeng News Skill - 糖果梦热榜 API、日报 API、图床上传 API 与智能体接入
+# Tgmeng News Skill - 糖果梦热榜、招采、日报、图床 API 与智能体接入
 
-这是一个给外部智能体使用的 Tgmeng / 糖果梦开放平台 Skill 包，覆盖站内新闻热点查询、糖果指数、日报数据和图床上传 API。
+这是一个给外部智能体使用的 Tgmeng / 糖果梦开放平台 Skill 包，覆盖站内新闻热点、招标采购公告、糖果指数、日报数据和图床上传 API。
 
 它本身不保存业务数据，也不保存密钥，只负责把 Tgmeng 接口能力整理成标准、清晰、稳定的调用契约，方便龙虾、Hermes 或其他支持工具调用的智能体接入。
 
 ## 适用场景
 
 - 糖果梦热榜 API、实时热点 API、历史热点检索、关键词热搜查询。
+- 招采数据 API、政府采购公告、公共资源交易、央国企采购、招标结果和采购意向查询。
 - 糖果指数 API、AI 汇总榜单、综合热度和分类热点趋势查询。
 - 糖果梦日报 API、每日总结、分类日报、Markdown 正文读取。
 - 糖果梦图床上传 API、PicGo 图床、第三方客户端上传、批量上传和图片外链生成。
@@ -14,23 +15,29 @@
 
 ## 能力说明
 
-当前 Skill 暴露四个核心能力：
+当前 Skill 暴露五个核心能力：
 
 ```text
 1. 热榜数据搜索：按密钥、关键词数组、查询模式和可选时间窗口，搜索 Tgmeng 站内新闻和热点数据
-2. 糖果指数查询：按密钥、关键词和分类，查询糖果指数榜单
-3. 日报数据查询：按密钥、日期、日期范围和分类，查询已生成的糖果梦日报，可返回正文 Markdown
-4. 图床上传 API：按密钥和稳定机器码上传图片/文件，支持 PicGo、三方客户端、脚本调用和批量上传
+2. 招采数据搜索：查询政府采购、公共资源交易、央国企和专业采购公告及完整结构化字段
+3. 糖果指数查询：按密钥、关键词和分类，查询糖果指数榜单
+4. 日报数据查询：按密钥、日期、日期范围和分类，查询已生成的糖果梦日报，可返回正文 Markdown
+5. 图床上传 API：按密钥和稳定机器码上传图片/文件，支持 PicGo、三方客户端、脚本调用和批量上传
 ```
 
 底层实际调用接口：
 
 ```text
 POST https://trendapi.tgmeng.com/api/skill/search
+POST https://trendapi.tgmeng.com/api/skill/procurement/search
 POST https://trendapi.tgmeng.com/api/skill/index
 POST https://trendapi.tgmeng.com/api/skill/dailyNews
 POST https://image.tgmeng.com/api/v1/upload
 ```
+
+## 能力边界
+
+日报接口只负责查询已经生成并持久化的日报，不负责触发日报生成、执行 Horizon 抓取任务、重跑采集或处理上游站点的 Cloudflare/WAF 验证。遇到这类采集失败时，应先排查日报生成任务和上游访问链路；即使接口本身可用，当天没有生成日报也会正常返回空结果。
 
 ## 目录结构
 
@@ -60,8 +67,8 @@ POST https://image.tgmeng.com/api/v1/upload
 `SKILL.md` 的 frontmatter 中声明了当前本地版本和远程版本清单地址：
 
 ```yaml
-version: 2.2.1
-updated_at: 2026-06-14
+version: 2.3.1
+updated_at: 2026-08-10
 update_check_url: https://raw.githubusercontent.com/tgmeng-com/tgmeng-news-skill/main/skill-version.json
 ```
 
@@ -270,6 +277,36 @@ tgmeng-news-skill 更新检查失败，可能是远程版本清单暂时无法�
 | `data.items[].publishedAt` | 数据更新时间。 |
 | `data.items[].rank` | 来源榜单排序。 |
 | `data.items[].simHash` | 历史数据相似度哈希，部分模式可能为空。 |
+
+## 招采数据查询
+
+招采公告使用独立接口，不再通过热榜根分类混用：
+
+```text
+POST https://trendapi.tgmeng.com/api/skill/procurement/search
+Content-Type: application/json
+```
+
+```json
+{
+  "license": "USER_LICENSE_CODE",
+  "keywords": ["办公设备-更正"],
+  "mode": "REALTIME",
+  "sourceGroups": ["政府采购"],
+  "provinces": ["北京市"],
+  "limit": null,
+  "offset": 0,
+  "distinct": false
+}
+```
+
+它复用热榜原有权限和额度：`REALTIME` 使用 `SEARCH`，`TODAY/HISTORY` 使用 `SKILLHISTORY`，QPM、QPD 和用量统一统计。`REALTIME` 返回每个来源当前最新可用数据，各平台的实际发布日期可以不同；`TODAY` 严格只查询当天，`HISTORY` 严格遵守请求时间范围。时间、关键词表达式、单月历史窗口和分页规则与热榜查询一致。
+
+支持 `sourceCodes`、`sourceGroups`、`provinces`、`cities`、`recordFamilies`、`originalTypes`、`lifecycleStages`、`outcomeStatuses`、`procurementMethods` 和 `transactionMethods` 筛选。不同字段之间是 AND，同一数组内部是 OR。
+
+返回的 `items` 是完整公告对象，包含来源、官网分类、记录族、业务领域、采购/交易方式、生命周期、结果状态、地区、项目编号、采购人、代理机构、金额、发布时间、截止时间和来源扩展属性。官网没有明确提供的字段保持空值，不根据标题臆造。
+
+`sourceStatuses` 是来源级当前采集状态，同一响应可以同时包含 `TODAY`、`LATEST_AVAILABLE` 和 `STALE_CACHE`。`NO_DATA` 表示采集正常完成但当天没有公告，不表示失败；通过 `dataScope`、`latestPublicationDate` 和 `fallbackToLatest` 判断实际新鲜度，每条公告仍使用真实 `publishedAt`。空采集不会覆盖最后一份有效数据，因此 `dataCount` 仍可能大于 0，`dataUpdateTime` 也可能早于 `lastCollectionTime`。
 
 ## 糖果指数查询
 

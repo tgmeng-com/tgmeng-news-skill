@@ -1,8 +1,8 @@
 openapi: 3.1.0
 info:
   title: Tgmeng News Skill APIs
-  version: 1.5.0
-  description: Tgmeng/糖果梦 Open Platform Skill APIs for realtime hotspot search, historical news retrieval, Tgmeng Index/糖果指数 lists, daily report/日报 queries, and TGMENG image bed/图床 upload with PicGo-compatible multipart upload.
+  version: 1.6.1
+  description: Tgmeng/糖果梦 Open Platform Skill APIs for realtime and historical hotspot search, structured procurement/tender notices/招采公告, Tgmeng Index/糖果指数, daily reports/日报, and PicGo-compatible image bed/图床 upload.
 servers:
   - url: https://trendapi.tgmeng.com
     description: Fixed production API server
@@ -82,6 +82,41 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SkillSearchResponse'
+  /api/skill/procurement/search:
+    post:
+      operationId: searchTgmengProcurement
+      summary: Search structured procurement and bidding notices
+      description: |
+        Search government procurement, public-resource trading, state-owned enterprise, and professional procurement notices.
+        This contract is independent from raw hotspot search but reuses the same license, SEARCH/SKILLHISTORY permissions, rate limit, and usage quota.
+        REALTIME may use an empty keywords array and returns each source's latest available data, so source publication dates may differ. TODAY/HISTORY require a keyword, remain strict time filters, default/max to 500 items per page, and HISTORY must stay within one calendar month.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProcurementSearchRequest'
+            examples:
+              realtime:
+                value:
+                  license: USER_LICENSE_CODE
+                  keywords:
+                    - 办公设备-更正
+                  mode: REALTIME
+                  sourceGroups:
+                    - 政府采购
+                  provinces:
+                    - 北京市
+                  limit: null
+                  offset: 0
+                  distinct: false
+      responses:
+        '200':
+          description: Standard response envelope. Business errors may also return HTTP 200; inspect code and message.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProcurementSearchResponse'
   /api/skill/index:
     post:
       operationId: searchTgmengIndex
@@ -376,6 +411,284 @@ components:
                 - 副业
             - type: 'null'
           description: Optional exact-match root category filter. Empty or omitted means all root categories. The enum is the currently documented set; the platform may add or adjust root categories, so prefer values observed in items[].rootCategory or listed by rootCategories unsupported errors.
+    StringOrStringArray:
+      oneOf:
+        - type: array
+          items:
+            type: string
+        - type: string
+        - type: 'null'
+    ProcurementSearchRequest:
+      type: object
+      additionalProperties: true
+      required:
+        - license
+        - keywords
+        - mode
+      properties:
+        license:
+          type: string
+          minLength: 1
+          description: Tgmeng universal license. Reuses the same permissions and quota as raw hotspot search.
+        keywords:
+          type: array
+          items:
+            type: string
+          description: OR between array items; one item supports include and exclude operators. May be empty only for REALTIME.
+        mode:
+          $ref: '#/components/schemas/SkillSearchMode'
+        startTime:
+          type:
+            - string
+            - 'null'
+          description: TODAY/HISTORY inclusive start. HISTORY requires a same-month start and end.
+        endTime:
+          type:
+            - string
+            - 'null'
+          description: TODAY/HISTORY inclusive end. HISTORY requires a same-month start and end.
+        sourceCodes:
+          $ref: '#/components/schemas/StringOrStringArray'
+        sourceGroups:
+          $ref: '#/components/schemas/StringOrStringArray'
+        provinces:
+          $ref: '#/components/schemas/StringOrStringArray'
+        cities:
+          $ref: '#/components/schemas/StringOrStringArray'
+        recordFamilies:
+          $ref: '#/components/schemas/StringOrStringArray'
+        originalTypes:
+          $ref: '#/components/schemas/StringOrStringArray'
+        lifecycleStages:
+          $ref: '#/components/schemas/StringOrStringArray'
+        outcomeStatuses:
+          $ref: '#/components/schemas/StringOrStringArray'
+        procurementMethods:
+          $ref: '#/components/schemas/StringOrStringArray'
+        transactionMethods:
+          $ref: '#/components/schemas/StringOrStringArray'
+        limit:
+          type:
+            - integer
+            - 'null'
+          minimum: 0
+          maximum: 2147483647
+          description: REALTIME null/0 means unlimited. TODAY/HISTORY null/0 defaults to 500 and concrete values cannot exceed 500.
+        offset:
+          type:
+            - integer
+            - 'null'
+          minimum: 0
+          default: 0
+        distinct:
+          type:
+            - boolean
+            - 'null'
+          default: false
+          description: Deduplicate by normalized title before pagination.
+    ProcurementSearchResponse:
+      type: object
+      required: [code, message, data]
+      properties:
+        code:
+          type: integer
+        message:
+          type: string
+        data:
+          oneOf:
+            - $ref: '#/components/schemas/ProcurementSearchData'
+            - type: 'null'
+    ProcurementSearchData:
+      type: object
+      required: [query, summary, sourceStatuses, items]
+      properties:
+        query:
+          $ref: '#/components/schemas/ProcurementSearchQuery'
+        summary:
+          $ref: '#/components/schemas/ProcurementSearchSummary'
+        sourceStatuses:
+          type: array
+          description: Current collection/cache health even when mode is TODAY or HISTORY.
+          items:
+            $ref: '#/components/schemas/ProcurementSourceStatus'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProcurementNotice'
+    ProcurementSearchSummary:
+      type: object
+      properties:
+        total:
+          type: integer
+          description: Complete filtered count after optional title deduplication, before pagination.
+        rawTotal:
+          type: integer
+          description: Complete filtered count before title deduplication.
+        returned:
+          type: integer
+        limit:
+          type: [integer, 'null']
+        offset:
+          type: integer
+        duplicatesRemoved:
+          type: integer
+        hasMore:
+          type: boolean
+        truncated:
+          type: boolean
+          description: Compatibility field with the same meaning as hasMore.
+        todaySourceCount:
+          type: integer
+          description: Number of current sources whose latest retained notice date is today.
+        latestAvailableSourceCount:
+          type: integer
+          description: Number of sources successfully collected today but displaying the latest available older publication date.
+        staleCacheSourceCount:
+          type: integer
+          description: Number of sources whose retained data has not been successfully refreshed today.
+        emptySourceCount:
+          type: integer
+          description: Number of current sources without any retained valid notice.
+    ProcurementSearchQuery:
+      type: object
+      properties:
+        mode:
+          $ref: '#/components/schemas/SkillSearchMode'
+        keywords:
+          type: array
+          items: { type: string }
+        permission:
+          type: string
+          enum: [SEARCH, SKILLHISTORY]
+        limit:
+          type: [integer, 'null']
+        offset:
+          type: integer
+        distinct:
+          type: boolean
+        startTime:
+          type: [string, 'null']
+        endTime:
+          type: [string, 'null']
+        sourceCodes:
+          $ref: '#/components/schemas/StringOrStringArray'
+        sourceGroups:
+          $ref: '#/components/schemas/StringOrStringArray'
+        provinces:
+          $ref: '#/components/schemas/StringOrStringArray'
+        cities:
+          $ref: '#/components/schemas/StringOrStringArray'
+        recordFamilies:
+          $ref: '#/components/schemas/StringOrStringArray'
+        originalTypes:
+          $ref: '#/components/schemas/StringOrStringArray'
+        lifecycleStages:
+          $ref: '#/components/schemas/StringOrStringArray'
+        outcomeStatuses:
+          $ref: '#/components/schemas/StringOrStringArray'
+        procurementMethods:
+          $ref: '#/components/schemas/StringOrStringArray'
+        transactionMethods:
+          $ref: '#/components/schemas/StringOrStringArray'
+    ProcurementSourceStatus:
+      type: object
+      properties:
+        sourceCode:
+          type: string
+        source:
+          type: string
+        sourceGroup:
+          type: string
+        collectionStatus:
+          type: string
+          enum: [HAS_DATA, NO_DATA]
+          description: NO_DATA means collection succeeded with no notice today; it is not a collection failure.
+        dataScope:
+          type: string
+          enum: [TODAY, LATEST_AVAILABLE, STALE_CACHE, '']
+          description: Source-level freshness. Different sources in one response may use different values.
+        latestPublicationDate:
+          type: string
+          description: Maximum real publication date among retained notices, formatted yyyy-MM-dd; empty when no valid notice exists.
+        fallbackToLatest:
+          type: boolean
+          description: true when today's collection was empty and REALTIME displays the latest available older publication date.
+        lastCollectionTime:
+          type: string
+        dataUpdateTime:
+          type: string
+          description: Effective notice-cache generation time; may be older than lastCollectionTime after NO_DATA.
+        dataCount:
+          type: integer
+          description: Retained valid notice count. It may be non-zero when collectionStatus is NO_DATA.
+    ProcurementNotice:
+      type: object
+      additionalProperties: false
+      properties:
+        id: { type: string }
+        title: { type: string }
+        url: { type: string, format: uri }
+        source: { type: string }
+        sourceCode: { type: string }
+        sourceGroup: { type: string }
+        sourceLevel: { type: string }
+        sourceChannel: { type: string }
+        originalCategory: { type: string }
+        originalType: { type: string }
+        originalTypeCode: { type: string }
+        recordFamily: { type: string }
+        domains:
+          type: array
+          items: { type: string }
+        industries:
+          type: array
+          items: { type: string }
+        subjectTypes:
+          type: array
+          items: { type: string }
+        procurementMethods:
+          type: array
+          items: { type: string }
+        transactionMethods:
+          type: array
+          items: { type: string }
+        procurementChannels:
+          type: array
+          items: { type: string }
+        lifecycleStage: { type: string }
+        noticeActions:
+          type: array
+          items: { type: string }
+        outcomeStatus: { type: string }
+        specialTopics:
+          type: array
+          items: { type: string }
+        region: { type: string }
+        province: { type: string }
+        city: { type: string }
+        district: { type: string }
+        projectNumber: { type: string }
+        purchaser: { type: string }
+        agency: { type: string }
+        organization: { type: string }
+        amount:
+          type:
+            - number
+            - 'null'
+        currency: { type: string }
+        publishedAt:
+          type:
+            - string
+            - 'null'
+        deadlineAt:
+          type:
+            - string
+            - 'null'
+        searchText: { type: string }
+        sourceAttributes:
+          type: object
+          additionalProperties:
+            type: string
     TgmengIndexRequest:
       type: object
       additionalProperties: true

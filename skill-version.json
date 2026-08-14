@@ -1,15 +1,22 @@
 {
   "name": "tgmeng-news-skill",
-  "latestVersion": "2.2.2",
-  "updatedAt": "2026-07-04",
+  "latestVersion": "2.3.1",
+  "updatedAt": "2026-08-10",
   "changelogUrl": "https://github.com/tgmeng-com/tgmeng-news-skill/blob/main/CHANGELOG.md",
   "releaseNotes": [
-    "热榜原始 TODAY/HISTORY 搜索同步服务端保护契约：默认/最大 500 条每页，HISTORY 必须传同一个自然月内的 startTime/endTime，超过 500 通过 offset 分页。",
+    "招采 REALTIME 现在按来源返回最新可用数据；今天无公告时回退到最近有效发布日期，TODAY/HISTORY 仍严格遵守请求时间。",
+    "招采来源状态新增 dataScope、latestPublicationDate、fallbackToLatest，并提供 TODAY/LATEST_AVAILABLE/STALE_CACHE 来源数量汇总。",
+    "新增独立招采数据 API：POST /api/skill/procurement/search，覆盖政府采购、公共资源交易、央国企和专业采购公告。",
+    "招采 API 复用原 SEARCH/SKILLHISTORY 权限与统一额度，支持实时/今日/历史、多维筛选、完整公告字段、来源状态、去重和分页。",
+    "热榜 API 不再返回招采数据，新闻热点与采购公告使用独立契约。",
+    "热榜原始 TODAY/HISTORY 搜索继续使用默认/最大 500 条每页和同月 HISTORY 窗口。",
     "优化 Skill SEO 和可发现性：README 标题、适用场景、SKILL.md 触发描述、OpenAPI description 和 agents/openai.yaml 展示文案补充中英文关键词。",
     "保留 2.2.0 新增的图床上传 API 能力：POST https://image.tgmeng.com/api/v1/upload。",
     "图床上传继续支持 X-License-Code、Authorization Bearer、稳定 X-Machine-Id、multipart/form-data、PicGo/三方客户端字段兼容和批量上传。"
   ],
   "agentUsageTips": [
+    "招采 REALTIME 的不同来源可能对应不同发布日期；读取 sourceStatuses[].dataScope/latestPublicationDate，并保留 items[].publishedAt 的真实日期。",
+    "用户明确说招采、招标、政府采购、公共资源交易、采购意向、中标结果、项目编号、采购人或代理机构时，使用 /api/skill/procurement/search。",
     "用户明确说糖果指数、指数榜、热度指数、AI 汇总榜或综合热度时，优先使用 /api/skill/index。",
     "用户明确说原始热搜、新闻热点、历史、关键词或时间窗口检索时，优先使用 /api/skill/search。",
     "用户明确说日报、每日总结、某天日报、分类日报、Markdown 正文或整理日报内容时，优先使用 /api/skill/dailyNews。",

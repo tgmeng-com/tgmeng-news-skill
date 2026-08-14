@@ -1,18 +1,19 @@
 ---
 name: tgmeng-news-skill
-version: 2.2.1
-updated_at: 2026-06-14
+version: 2.3.1
+updated_at: 2026-08-10
 update_check_url: https://raw.githubusercontent.com/tgmeng-com/tgmeng-news-skill/main/skill-version.json
-description: Search Tgmeng/糖果梦 in-site news, hotspot data, Tgmeng Index/糖果指数 data, generated daily news reports/日报, and upload images/files to the TGMENG image bed/图床 through the Tgmeng Open Platform Skill APIs. Use when an agent needs to query current, today, or historical news/hotspot records, AI-generated ranking/index lists, daily report Markdown, PicGo/third-party image upload, batch upload, or hosted image/file URLs with a user-provided license and explicit user intent.
+description: Search Tgmeng/糖果梦 hotspot and procurement/tender data, Tgmeng Index/糖果指数, generated daily reports/日报, and upload images/files to the TGMENG image bed/图床. Use for current/today/history news, government procurement and bidding notices/招采公告, AI rankings, report Markdown, PicGo uploads, or hosted file URLs with a user-provided license and explicit intent.
 ---
 
 # Tgmeng News Skill
 
-Use this skill to call Tgmeng's news, hotspot, Tgmeng Index, daily report, and image upload APIs.
+Use this skill to call Tgmeng's news, hotspot, procurement, Tgmeng Index, daily report, and image upload APIs.
 
-This skill exposes four capabilities:
+This skill exposes five capabilities:
 
 - Raw hotspot search: `POST https://trendapi.tgmeng.com/api/skill/search`
+- Procurement notice search: `POST https://trendapi.tgmeng.com/api/skill/procurement/search`
 - Tgmeng Index search: `POST https://trendapi.tgmeng.com/api/skill/index`
 - Daily News query: `POST https://trendapi.tgmeng.com/api/skill/dailyNews`
 - Image/file upload: `POST https://image.tgmeng.com/api/v1/upload`
@@ -76,6 +77,8 @@ Would you like to update the skill before I continue? If not, I can continue wit
 
 Use raw hotspot search when the user clearly asks for original news/hotspot records, keyword search, realtime records, today's records, historical records, root categories, or a time-window search.
 
+Use procurement notice search when the user asks for 招采、招标、投标、政府采购、公共资源交易、央国企采购、采购公告、中标/成交结果、采购意向、项目编号、采购人或代理机构。Do not use raw hotspot root categories to retrieve procurement data.
+
 Use Tgmeng Index search when the user clearly asks for 糖果指数, index lists, 热度指数, AI-generated ranking, 综合热度, or cached Tgmeng Index data.
 
 Use Daily News query when the user clearly asks for 日报, 每日总结, daily report, generated report content, category daily report, report Markdown, a report for a specific date, or a date-range list of generated reports.
@@ -85,9 +88,10 @@ Use Image/file upload when the user clearly asks to upload images, upload files 
 If the user's request is ambiguous, such as "查热点", "看看热榜", "最近有什么热搜", or "看看新闻总结", ask a short clarification before calling any API. Explain the options:
 
 1. Raw hotspot search: searches original news/hotspot records. It supports `REALTIME`, `TODAY`, `HISTORY`, keywords, root categories, and optional time windows.
-2. Tgmeng Index search: searches AI-generated and cached Tgmeng Index lists. It returns indexed hotspot titles with `hotScore` and category, suitable for viewing overall heat.
-3. Daily News query: searches already generated Tgmeng daily reports. It supports date, date range, category, and optional Markdown content.
-4. Image/file upload: uploads local images or files to the TGMENG image bed and returns public links, Markdown, HTML, and batch result metadata.
+2. Procurement notice search: searches structured bidding and procurement notices with source, region, lifecycle, method, organization, amount, deadline, and collection status fields.
+3. Tgmeng Index search: searches AI-generated and cached Tgmeng Index lists. It returns indexed hotspot titles with `hotScore` and category, suitable for viewing overall heat.
+4. Daily News query: searches already generated Tgmeng daily reports. It supports date, date range, category, and optional Markdown content.
+5. Image/file upload: uploads local images or files to the TGMENG image bed and returns public links, Markdown, HTML, and batch result metadata.
 
 Ask the user which capability they want to use, then call the matching endpoint.
 
@@ -95,7 +99,7 @@ Ask the user which capability they want to use, then call the matching endpoint.
 
 Do not infer, add, or reduce a concrete `limit` automatically for APIs that do not have a server-side page cap.
 
-For raw `TODAY` and `HISTORY` hotspot search, the server protects the query with a default and maximum page size of 500. If the user did not explicitly request a result count, set `limit` to `null`; the server will treat it as one page of up to 500 items. If the user requests more than 500 raw `TODAY` or `HISTORY` results, use `offset` pagination with the same filters instead of sending a larger `limit`.
+For raw hotspot and procurement `TODAY`/`HISTORY` search, the server protects the query with a default and maximum page size of 500. If the user did not explicitly request a result count, set `limit` to `null`; the server will treat it as one page of up to 500 items. If the user requests more than 500 results, use `offset` pagination with the same filters instead of sending a larger `limit`.
 
 For raw `REALTIME`, Tgmeng Index, and Daily News, keep the existing rule: use `limit: null` by default and do not set a concrete number unless the user explicitly requests a count or confirms a limit.
 
@@ -203,6 +207,49 @@ For `TODAY`, omitted times default to today's start and the current time; any pr
 ```
 
 Treat `data.items` as the result list. Items are ordered by update time from newest to oldest; earlier items in the array are newer, rather than being sorted by hotspot popularity weight. This helps agents understand the result ordering logic. Use `data.query` to understand what was searched and `data.summary.hasMore` to detect whether more results are available. `data.summary.truncated` is kept for compatibility and has the same meaning as `hasMore`. If `hasMore` is true and the user wants more results, keep the same filters and set the next request's `offset` to `data.summary.offset + data.summary.returned`. For raw `HISTORY`, the next page must keep the same single-month window. Do not derive the next offset from `limit`, especially when `limit` is `null` or the API returns fewer items than requested. When `distinct` is true, `REALTIME` reports deduplicated totals; raw `TODAY` and `HISTORY` are server-paged and their totals are page-scoped. Some item fields may be absent or null depending on source and mode.
+
+## Procurement Notice Search
+
+Call:
+
+```text
+POST https://trendapi.tgmeng.com/api/skill/procurement/search
+```
+
+Use a JSON body:
+
+```json
+{
+  "license": "USER_LICENSE_CODE",
+  "keywords": ["办公设备-更正"],
+  "mode": "REALTIME",
+  "startTime": null,
+  "endTime": null,
+  "sourceCodes": [],
+  "sourceGroups": ["政府采购"],
+  "provinces": ["北京市"],
+  "cities": [],
+  "recordFamilies": [],
+  "originalTypes": [],
+  "lifecycleStages": [],
+  "outcomeStatuses": [],
+  "procurementMethods": [],
+  "transactionMethods": [],
+  "limit": null,
+  "offset": 0,
+  "distinct": false
+}
+```
+
+The endpoint deliberately has a separate business contract from raw hotspot search. It reuses the same license, `SEARCH` permission for `REALTIME`, `SKILLHISTORY` permission for `TODAY/HISTORY`, rate limit, and usage quota. `REALTIME` may use `keywords: []`; `TODAY/HISTORY` require a non-empty string array. `REALTIME` returns each source's latest available data, so different sources may represent different publication dates. `TODAY` remains strictly limited to today and `HISTORY` remains strictly limited to its requested range. Time-window and pagination rules otherwise match raw hotspot search: `HISTORY` must stay in one calendar month, and `TODAY/HISTORY` default/max to 500 items per page.
+
+Filters use AND between fields and OR inside each field array. Plural filter fields also accept one string. Keywords search title, project number, purchaser, agency, organization, source/type/family, region, and source-declared search text. `procurementMethods` and `transactionMethods` match any value in the corresponding item arrays.
+
+Treat `data.items` as full structured procurement notices. Important fields include `id`, `title`, `url`, `source`, `sourceCode`, `sourceGroup`, `sourceLevel`, `sourceChannel`, `originalCategory`, `originalType`, `originalTypeCode`, `recordFamily`, `domains`, `industries`, `subjectTypes`, `procurementMethods`, `transactionMethods`, `procurementChannels`, `lifecycleStage`, `noticeActions`, `outcomeStatus`, `specialTopics`, `region`, `province`, `city`, `district`, `projectNumber`, `purchaser`, `agency`, `organization`, `amount`, `currency`, `publishedAt`, `deadlineAt`, `searchText`, and `sourceAttributes`. Missing facts remain empty/null; never infer them from a title.
+
+`data.sourceStatuses` reports current source health even for `TODAY/HISTORY`. Status is source-level, never response-level: one response may mix `TODAY`, `LATEST_AVAILABLE`, and `STALE_CACHE` sources. `HAS_DATA` means the most recent successful collection obtained today's notices. `NO_DATA` means collection succeeded but found no notice for today; it is not a failure. Read `dataScope`, `latestPublicationDate`, and `fallbackToLatest` before describing freshness. Do not claim a `LATEST_AVAILABLE` or `STALE_CACHE` item was published today; use each item's real `publishedAt`. Empty collection does not overwrite the last valid items, so `dataCount` can remain greater than zero and `dataUpdateTime` can be older than `lastCollectionTime`.
+
+Use `data.summary.total`, `rawTotal`, `duplicatesRemoved`, `returned`, and `hasMore` for pagination. When `hasMore` is true, preserve every filter and use `nextOffset = data.summary.offset + data.summary.returned`.
 
 ## Tgmeng Index Search
 
@@ -536,6 +583,11 @@ Common authorization errors:
 - Image upload missing/invalid license or missing BASIC permission: report upload authorization failure and do not retry aggressively.
 - Image upload missing/rotated `X-Machine-Id`: reuse the stable device machine id instead of generating a new one per request.
 
+Procurement status guidance:
+
+- `sourceStatuses[].collectionStatus = HAS_DATA`: the latest successful collection obtained today's notices.
+- `sourceStatuses[].collectionStatus = NO_DATA`: collection completed successfully but no notice was published today; it is not a failure and the last valid items may remain visible.
+
 Common image upload HTTP errors:
 
 - HTTP 400 `Invalid multipart/form-data request`: request is not valid multipart form data.
@@ -547,7 +599,7 @@ Common image upload HTTP errors:
 
 ## Recommended Agent Workflow
 
-1. Determine whether the user wants raw hotspot search, Tgmeng Index search, Daily News query, or Image/file upload.
+1. Determine whether the user wants raw hotspot search, procurement notice search, Tgmeng Index search, Daily News query, or Image/file upload.
 2. If the request is ambiguous, explain the available capabilities and ask the user which one to use before calling an API.
 3. Validate `license` locally before calling the API.
 4. Set `limit` to `null` by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit.
@@ -556,9 +608,9 @@ Common image upload HTTP errors:
 7. For Daily News, use `date` for exact-day report requests, or `startDate` and `endDate` for report-date ranges.
 8. For Daily News, set `withContent` to `true` when the user wants report body or Markdown; set it to `false` only for report lists or metadata.
 9. For Image/file upload, require at least one file path/blob and a stable `X-Machine-Id`; send `multipart/form-data`, not JSON.
-10. Set `offset` to `0` by default. If `data.summary.hasMore` is true and the user wants more, call the same endpoint again with `offset = data.summary.offset + data.summary.returned`.
+10. Set `offset` to `0` by default. If `data.summary.hasMore` is true and the user wants more, call the same endpoint again with `offset = data.summary.offset + data.summary.returned`, preserving every filter.
 11. Set `distinct` to `false` by default for raw hotspot search and Tgmeng Index search. Daily News and Image/file upload do not support `distinct`.
-12. Call the chosen news/index/daily endpoint with JSON content type, or the image upload endpoint with multipart form data.
+12. Call the chosen news/procurement/index/daily endpoint with JSON content type, or the image upload endpoint with multipart form data.
 13. Read `code`, `message`, and `data` from JSON APIs; for image upload, read `success`, `partial`, `url`, `data.urls`, and `files`.
 14. Summarize results with source titles, report titles, URLs, or Markdown content when available. Do not expose the license.
 
