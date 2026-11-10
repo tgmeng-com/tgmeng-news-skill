@@ -1,37 +1,32 @@
 {
   "name": "tgmeng-news-skill",
-  "latestVersion": "2.3.1",
-  "updatedAt": "2026-08-10",
+  "latestVersion": "3.0.0",
+  "updatedAt": "2026-11-10",
   "changelogUrl": "https://github.com/tgmeng-com/tgmeng-news-skill/blob/main/CHANGELOG.md",
   "releaseNotes": [
-    "招采 REALTIME 现在按来源返回最新可用数据；今天无公告时回退到最近有效发布日期，TODAY/HISTORY 仍严格遵守请求时间。",
-    "招采来源状态新增 dataScope、latestPublicationDate、fallbackToLatest，并提供 TODAY/LATEST_AVAILABLE/STALE_CACHE 来源数量汇总。",
-    "新增独立招采数据 API：POST /api/skill/procurement/search，覆盖政府采购、公共资源交易、央国企和专业采购公告。",
-    "招采 API 复用原 SEARCH/SKILLHISTORY 权限与统一额度，支持实时/今日/历史、多维筛选、完整公告字段、来源状态、去重和分页。",
-    "热榜 API 不再返回招采数据，新闻热点与采购公告使用独立契约。",
-    "热榜原始 TODAY/HISTORY 搜索继续使用默认/最大 500 条每页和同月 HISTORY 窗口。",
-    "优化 Skill SEO 和可发现性：README 标题、适用场景、SKILL.md 触发描述、OpenAPI description 和 agents/openai.yaml 展示文案补充中英文关键词。",
-    "保留 2.2.0 新增的图床上传 API 能力：POST https://image.tgmeng.com/api/v1/upload。",
-    "图床上传继续支持 X-License-Code、Authorization Bearer、稳定 X-Machine-Id、multipart/form-data、PicGo/三方客户端字段兼容和批量上传。"
+    "迁移到新开放平台：/v1/hot/search、/v1/procurement/search、/v1/candy/search、/v1/daily/search。",
+    "鉴权从 Legacy License Code 改为账号中心生成的站内通用 API Key，使用 Authorization: Bearer tgm_open_...。",
+    "请求体不再接受 license 字段；每个账号一把 Key，可在 account.tgmeng.com/developer 重置。",
+    "图床上传能力已移除，不再调用 image.tgmeng.com。",
+    "响应统一为 {requestId, data:{query, summary, items}}，错误统一为 {requestId, error:{code, message}}。",
+    "新增开放平台限流响应头和 401/403/429 错误码说明。"
   ],
   "agentUsageTips": [
-    "招采 REALTIME 的不同来源可能对应不同发布日期；读取 sourceStatuses[].dataScope/latestPublicationDate，并保留 items[].publishedAt 的真实日期。",
-    "用户明确说招采、招标、政府采购、公共资源交易、采购意向、中标结果、项目编号、采购人或代理机构时，使用 /api/skill/procurement/search。",
-    "用户明确说糖果指数、指数榜、热度指数、AI 汇总榜或综合热度时，优先使用 /api/skill/index。",
-    "用户明确说原始热搜、新闻热点、历史、关键词或时间窗口检索时，优先使用 /api/skill/search。",
-    "用户明确说日报、每日总结、某天日报、分类日报、Markdown 正文或整理日报内容时，优先使用 /api/skill/dailyNews。",
-    "用户明确说上传图片、上传文件、图床 API、PicGo、三方客户端上传、批量上传或生成图片外链时，优先使用 https://image.tgmeng.com/api/v1/upload。",
-    "图床上传必须使用 multipart/form-data，并传 X-License-Code 或 Authorization Bearer，以及稳定复用的 X-Machine-Id。",
-    "图床上传单文件优先使用 file 字段，批量优先重复使用 files[] 字段；兼容 image、smfile、source、files、upload、media。",
-    "日报查询里，用户要正文、Markdown、导出或学习材料时传 withContent: true；只看列表或元数据时可传 withContent: false。",
-    "用户要当前全量实时热榜时，调用 /api/skill/search，传 mode: REALTIME、keywords: []、limit: null、offset: 0。",
-    "调用 /api/skill/search 的 TODAY/HISTORY 时，服务端默认/最大 500 条每页；HISTORY 必须传同一个自然月内的 startTime 和 endTime，不能跨月。",
-    "rootCategories 文档列表是当前已知集合；平台分类可能扩展，继续筛选时优先参考实际返回的 items[].rootCategory。",
-    "当用户希望减少搜索噪音时，可以把多个条件写在一个 keywords 项里，例如 伊朗+导弹-足球；热榜数据搜索和糖果指数查询都适用。",
-    "如果用户没有明确要求返回条数，默认传 \"limit\": null；不要自行改成具体数字。",
-    "默认传 \"offset\": 0；当 summary.hasMore 为 true 且用户需要继续获取时，保持同样条件，并使用 nextOffset = data.summary.offset + data.summary.returned。",
-    "默认传 \"distinct\": false；当用户希望减少重复标题、通稿转载或 token 浪费时，可以传 \"distinct\": true。",
-    "汇总结果时注意保护 license，不要在日志、页面或回复中暴露完整密钥。"
+    "热榜、新闻热点、关键词、今日或历史检索使用 POST /v1/hot/search。",
+    "招采、招标、政府采购、公共资源交易、采购意向、中标结果、项目编号、采购人或代理机构使用 POST /v1/procurement/search。",
+    "糖果指数、指数榜、热度指数、AI 汇总榜或综合热度使用 POST /v1/candy/search。",
+    "日报、每日总结、某天日报、分类日报、Markdown 正文或整理日报内容使用 POST /v1/daily/search。",
+    "认证只使用 Authorization: Bearer tgm_open_...，不要把 Key 放进请求体、URL 或日志。",
+    "用户没有明确条数时，使用保守的 limit（例如 20 或 50）；HISTORY 必须保持在同一个自然月内。",
+    "热榜 TODAY/HISTORY 至少需要一个关键词；单表达式内 + 表示同时包含，- 或 ! 表示排除。",
+    "招采 REALTIME 的每个来源可能返回较早日期的数据；读取 sourceStatuses[].dataScope/latestPublicationDate，并保留 items[].publishedAt 的真实日期。",
+    "日报列表优先 withContent:false；用户需要正文、导出或 Markdown 时再传 true。",
+    "分页时使用 summary.offset + summary.returned 作为下一页 offset，并在 summary.hasMore 为 false 时停止。",
+    "用户要求上传图片或文件时，说明该能力已下线，不要调用旧图床。",
+    "调用失败时读取 error.code 和 requestId；401/403 不要频繁重试，429 按 Retry-After 等待。"
   ],
-  "breakingChanges": []
+  "breakingChanges": [
+    "旧 /api/skill/* 路径全部失效，改用 /v1/*。",
+    "旧 license 请求字段和图床 API 已移除。"
+  ]
 }

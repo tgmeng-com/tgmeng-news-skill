@@ -1,1457 +1,363 @@
-openapi: 3.1.0
+openapi: 3.0.3
 info:
-  title: Tgmeng News Skill APIs
-  version: 1.6.1
-  description: Tgmeng/糖果梦 Open Platform Skill APIs for realtime and historical hotspot search, structured procurement/tender notices/招采公告, Tgmeng Index/糖果指数, daily reports/日报, and PicGo-compatible image bed/图床 upload.
+  title: Tgmeng Open Platform Skill API
+  version: 3.0.0
+  description: |
+    Tgmeng/糖果梦 Open Platform APIs for hotspot search, procurement notices,
+    Tgmeng Index and daily reports. Uses a site-wide API key from
+    https://account.tgmeng.com/developer. Image/file upload is not part of v3.
 servers:
-  - url: https://trendapi.tgmeng.com
-    description: Fixed production API server
+  - url: https://api-open.tgmeng.com
+security:
+  - bearerAuth: []
 paths:
-  /api/skill/search:
+  /v1/hot/search:
     post:
-      operationId: searchTgmengNews
-      summary: Search Tgmeng news and hotspot data
-      description: |
-        Search current, today, or historical Tgmeng in-site news and hotspot records.
-        REALTIME requires SEARCH permission. TODAY and HISTORY require SKILLHISTORY permission.
-        TODAY and HISTORY require at least one non-blank keyword.
-        For TODAY and HISTORY, the server applies a default and maximum page size of 500. HISTORY must include startTime and endTime in the same calendar month. Set offset to 0 by default; when continuing pagination, use nextOffset = data.summary.offset + data.summary.returned and keep the same HISTORY month window. Set distinct to false by default; use true only when the user asks to reduce duplicate titles or repeated reposts.
-        Self-healing retries should fix only the invalid field: use POST, JSON content type, a JSON object body, integer non-negative limit/offset, boolean distinct, and string-array keywords for raw search.
+      operationId: searchHotspots
+      summary: Search hotspots and news
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/SkillSearchRequest'
-            examples:
-              realtime:
-                summary: Realtime search with default limit null
-                value:
-                  license: USER_LICENSE_CODE
-                  keywords:
-                    - AI
-                    - OpenAI
-                  mode: REALTIME
-                  rootCategories:
-                    - AI
-                  limit: null
-                  offset: 0
-                  distinct: false
-              realtimeFullFeed:
-                summary: Current full realtime feed without keyword filtering
-                value:
-                  license: USER_LICENSE_CODE
-                  keywords: []
-                  mode: REALTIME
-                  rootCategories: []
-                  limit: null
-                  offset: 0
-                  distinct: false
-              today:
-                summary: Today search with server default page size
-                value:
-                  license: USER_LICENSE_CODE
-                  keywords:
-                    - 机器人
-                  mode: TODAY
-                  rootCategories:
-                    - 科技
-                  startTime: '2026-05-05 00:00:00'
-                  endTime: '2026-05-05 12:00:00'
-                  limit: null
-                  offset: 0
-                  distinct: false
-              historyWithUserApprovedLimit:
-                summary: Historical search within one calendar month
-                value:
-                  license: USER_LICENSE_CODE
-                  keywords:
-                    - OpenAI
-                  mode: HISTORY
-                  rootCategories:
-                    - AI
-                  startTime: '2026-04-01'
-                  endTime: '2026-04-30'
-                  limit: 20
-                  offset: 0
-                  distinct: true
+              $ref: '#/components/schemas/HotSearchRequest'
       responses:
         '200':
-          description: Standard Tgmeng response envelope. Business errors may also return HTTP 200; inspect code and message.
+          description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/SkillSearchResponse'
-  /api/skill/procurement/search:
+                $ref: '#/components/schemas/HotSearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/procurement/search:
     post:
-      operationId: searchTgmengProcurement
-      summary: Search structured procurement and bidding notices
-      description: |
-        Search government procurement, public-resource trading, state-owned enterprise, and professional procurement notices.
-        This contract is independent from raw hotspot search but reuses the same license, SEARCH/SKILLHISTORY permissions, rate limit, and usage quota.
-        REALTIME may use an empty keywords array and returns each source's latest available data, so source publication dates may differ. TODAY/HISTORY require a keyword, remain strict time filters, default/max to 500 items per page, and HISTORY must stay within one calendar month.
+      operationId: searchProcurement
+      summary: Search procurement and tender notices
       requestBody:
         required: true
         content:
           application/json:
             schema:
               $ref: '#/components/schemas/ProcurementSearchRequest'
-            examples:
-              realtime:
-                value:
-                  license: USER_LICENSE_CODE
-                  keywords:
-                    - 办公设备-更正
-                  mode: REALTIME
-                  sourceGroups:
-                    - 政府采购
-                  provinces:
-                    - 北京市
-                  limit: null
-                  offset: 0
-                  distinct: false
       responses:
         '200':
-          description: Standard response envelope. Business errors may also return HTTP 200; inspect code and message.
+          description: Successful response
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ProcurementSearchResponse'
-  /api/skill/index:
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/candy/search:
     post:
       operationId: searchTgmengIndex
-      summary: Search AI-generated Tgmeng Index lists
-      description: |
-        Search cached AI-generated Tgmeng Index lists. The endpoint returns indexed hotspot titles, categories, update time, and hotScore.
-        Use this endpoint when the user clearly asks for 糖果指数, index lists, 热度指数, AI-generated ranking, or 综合热度.
-        If the user request is ambiguous between raw hotspot search, Tgmeng Index search, and Daily News query, ask the user which capability they want before calling an API.
-        Set limit to null by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit. Set offset to 0 by default; when continuing pagination, use nextOffset = data.summary.offset + data.summary.returned. Set distinct to false by default; use true only when the user asks to reduce duplicate titles or repeated reposts.
-        Self-healing retries should fix only the invalid field: use POST, JSON content type, a JSON object body, integer non-negative limit/offset, and boolean distinct.
+      summary: Search Tgmeng Index
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/TgmengIndexRequest'
-            examples:
-              indexSearch:
-                summary: Tgmeng Index search with default limit null
-                value:
-                  license: USER_LICENSE_CODE
-                  keywords:
-                    - AI
-                  categories:
-                    - all
-                    - technology
-                    - ai
-                  limit: null
-                  offset: 0
-                  distinct: false
-              indexSearchWithUserApprovedLimit:
-                summary: Tgmeng Index search with user-approved limit
-                value:
-                  license: USER_LICENSE_CODE
-                  keywords:
-                    - AI
-                  categories:
-                    - ai
-                  limit: 10
-                  offset: 0
-                  distinct: true
+              $ref: '#/components/schemas/CandySearchRequest'
       responses:
         '200':
-          description: Standard Tgmeng response envelope. Business errors may also return HTTP 200; inspect code and message.
+          description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TgmengIndexResponse'
-  /api/skill/dailyNews:
-    post:
-      operationId: queryDailyNews
-      summary: Query generated Tgmeng daily news reports
-      description: |
-        Query already generated Tgmeng daily news reports by exact date, date range, and optional category.
-        Use this endpoint when the user asks for 日报, 每日总结, category daily report, report Markdown, or a generated report for a specific date.
-        The endpoint requires SEARCH permission. Set limit to null by default. Do not set a concrete limit unless the user explicitly requested a count or confirmed a limit. Set offset to 0 by default; when continuing pagination, use nextOffset = data.summary.offset + data.summary.returned.
-        Set withContent to true when the user wants report body, Markdown, article content, export, download, or learning material. Set withContent to false only for report lists or metadata.
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/DailyNewsRequest'
-            examples:
-              exactDateWithContent:
-                summary: Exact-date daily report with Markdown content
-                value:
-                  license: USER_LICENSE_CODE
-                  date: '2026-05-20'
-                  category: technology
-                  limit: null
-                  offset: 0
-                  withContent: true
-              dateRangeMetadata:
-                summary: Date-range daily report metadata list
-                value:
-                  license: USER_LICENSE_CODE
-                  startDate: '2026-05-01'
-                  endDate: '2026-05-20'
-                  category: all
-                  limit: null
-                  offset: 0
-                  withContent: false
-      responses:
-        '200':
-          description: Standard Tgmeng response envelope. Business errors may also return HTTP 200; inspect code and message.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/DailyNewsResponse'
-  /api/v1/upload:
-    post:
-      operationId: uploadImageFile
-      summary: Upload images or files to the TGMENG image bed
-      servers:
-        - url: https://image.tgmeng.com
-          description: Fixed production image upload API server
-      description: |
-        Upload one or more files to the TGMENG image bed. Use this endpoint for API uploads, PicGo, third-party image hosting clients, scripts, batch uploads, and hosted public image/file links.
-        Requires a Tgmeng universal license with BASIC permission and a stable X-Machine-Id header. Uploaded files are owned by the validated license; users can manage only files uploaded under their own license.
-        Send multipart/form-data. Preferred file field is file for single upload and repeated files[] for batch upload. Compatible field names include image, smfile, source, files, upload, and media.
-        Existing /file/... public links remain externally accessible even if the license later expires; expiration blocks later upload/manage actions, not already published file delivery links.
-      parameters:
-        - name: X-License-Code
-          in: header
-          required: true
-          schema:
-            type: string
-            minLength: 1
-          description: Tgmeng universal license code. Preferred auth header. Do not log, expose, or place it in a URL.
-        - name: X-Machine-Id
-          in: header
-          required: true
-          schema:
-            type: string
-            minLength: 1
-          description: Stable device id for TGMENG device binding. Reuse the same value for the same client/device; do not rotate per request.
-        - name: Authorization
-          in: header
-          required: false
-          schema:
-            type: string
-          description: Compatibility auth header. Use Bearer USER_LICENSE_CODE when a client supports bearer auth but not X-License-Code.
-      requestBody:
-        required: true
-        content:
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/ImageUploadRequest'
-            encoding:
-              file:
-                contentType: application/octet-stream
-              files[]:
-                contentType: application/octet-stream
-            examples:
-              singleUpload:
-                summary: Single image upload
-                value:
-                  file: image.png
-                  serverCompress: 'false'
-              batchUpload:
-                summary: Batch image upload
-                value:
-                  files[]:
-                    - a.png
-                    - b.jpg
-      responses:
-        '200':
-          description: Upload result. Inspect success, partial, message, url, data.urls, and files.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ImageUploadResponse'
+                $ref: '#/components/schemas/CandySearchResponse'
         '400':
-          description: Invalid multipart/form-data request or no file provided.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ImageUploadResponse'
+          $ref: '#/components/responses/BadRequest'
         '401':
-          description: Unauthorized. License or machine id validation failed.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ImageUploadResponse'
+          $ref: '#/components/responses/Unauthorized'
         '403':
-          description: Source IP is blocked by protection rules.
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
+  /v1/daily/search:
+    post:
+      operationId: searchDailyReports
+      summary: Search daily reports
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DailySearchRequest'
+      responses:
+        '200':
+          description: Successful response
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ImageUploadResponse'
-        '413':
-          description: Uploaded file is too large.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ImageUploadResponse'
-        '500':
-          description: Upload or storage failure.
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/ImageUploadResponse'
+                $ref: '#/components/schemas/DailySearchResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '429':
+          $ref: '#/components/responses/RateLimited'
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: tgm_open_key
+  responses:
+    BadRequest:
+      description: Invalid request parameters
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Missing or invalid API key
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Forbidden:
+      description: Key disabled/expired or feature not allowed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    RateLimited:
+      description: Rate limit or daily quota exceeded
+      headers:
+        Retry-After:
+          schema:
+            type: integer
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
   schemas:
-    SkillSearchMode:
-      type: string
-      description: Search time scope. Values are case-sensitive and must be uppercase English enum names.
-      enum:
-        - REALTIME
-        - TODAY
-        - HISTORY
-    SkillSearchRequest:
-      type: object
-      additionalProperties: true
-      required:
-        - license
-        - keywords
-        - mode
-      properties:
-        license:
-          type: string
-          minLength: 1
-          description: Tgmeng universal license code (糖果梦通用密钥). If absent, obtain one at https://wechat.tgmeng.com. Must not be logged or exposed.
-        keywords:
-          type: array
-          description: Keyword list. Array items use OR matching. Inside one item, +, ＋, &, ＆ mean required include; -, －, !, ！ mean exclude. For a current full realtime feed, send mode REALTIME with keywords as an empty array; do not send a blank string item and do not omit keywords. TODAY and HISTORY require at least one non-blank item.
-          items:
-            type: string
-        mode:
-          $ref: '#/components/schemas/SkillSearchMode'
-        limit:
-          type:
-            - integer
-            - 'null'
-          minimum: 0
-          maximum: 2147483647
-          description: Maximum number of returned items. For REALTIME, null means no client-side count limit by default. For TODAY and HISTORY, null, omitted, or 0 means the server default page size of 500; concrete values must be between 0 and 500.
-        offset:
-          type:
-            - integer
-            - 'null'
-          minimum: 0
-          maximum: 2147483647
-          default: 0
-          description: Result offset. Default is 0. For TODAY and HISTORY, use it to fetch later pages when data.summary.hasMore is true. The next page offset is always current offset plus data.summary.returned. HISTORY pagination must keep the same single-month window.
-        distinct:
-          type:
-            - boolean
-            - 'null'
-          default: false
-          description: Whether to deduplicate by normalized title. Default is false. When true, deduplication runs after keyword/category/time filters and before pagination, keeps the first item in existing sort order, and does not use simHash.
-        startTime:
-          type:
-            - string
-            - 'null'
-          description: Optional for TODAY and required for HISTORY. Inclusive time window start for TODAY and HISTORY. Ignored for REALTIME. Accepts yyyy-MM-dd HH:mm:ss or yyyy-MM-dd; date-only values are normalized to 00:00:00. HISTORY must provide both startTime and endTime in the same calendar month.
-          examples:
-            - '2026-05-05 00:00:00'
-            - '2026-05-05'
-        endTime:
-          type:
-            - string
-            - 'null'
-          description: Optional for TODAY and required for HISTORY. Inclusive time window end for TODAY and HISTORY. Ignored for REALTIME. Accepts yyyy-MM-dd HH:mm:ss or yyyy-MM-dd; date-only values are normalized to 23:59:59. HISTORY must provide both startTime and endTime in the same calendar month.
-          examples:
-            - '2026-05-05 23:59:59'
-            - '2026-05-05'
-        rootCategories:
-          oneOf:
-            - type: array
-              items:
-                type: string
-                enum:
-                  - 新闻
-                  - 羊毛
-                  - 媒体
-                  - 电视
-                  - 生活
-                  - 社区
-                  - 财经
-                  - 股讯
-                  - 体育
-                  - 科技
-                  - 设计
-                  - 影音
-                  - 游戏
-                  - 健康
-                  - 教育
-                  - 期货
-                  - AI
-                  - 副业
-            - type: string
-              enum:
-                - 新闻
-                - 羊毛
-                - 媒体
-                - 电视
-                - 生活
-                - 社区
-                - 财经
-                - 股讯
-                - 体育
-                - 科技
-                - 设计
-                - 影音
-                - 游戏
-                - 健康
-                - 教育
-                - 期货
-                - AI
-                - 副业
-            - type: 'null'
-          description: Optional exact-match root category filter. Empty or omitted means all root categories. The enum is the currently documented set; the platform may add or adjust root categories, so prefer values observed in items[].rootCategory or listed by rootCategories unsupported errors.
-    StringOrStringArray:
-      oneOf:
-        - type: array
-          items:
-            type: string
-        - type: string
-        - type: 'null'
-    ProcurementSearchRequest:
-      type: object
-      additionalProperties: true
-      required:
-        - license
-        - keywords
-        - mode
-      properties:
-        license:
-          type: string
-          minLength: 1
-          description: Tgmeng universal license. Reuses the same permissions and quota as raw hotspot search.
-        keywords:
-          type: array
-          items:
-            type: string
-          description: OR between array items; one item supports include and exclude operators. May be empty only for REALTIME.
-        mode:
-          $ref: '#/components/schemas/SkillSearchMode'
-        startTime:
-          type:
-            - string
-            - 'null'
-          description: TODAY/HISTORY inclusive start. HISTORY requires a same-month start and end.
-        endTime:
-          type:
-            - string
-            - 'null'
-          description: TODAY/HISTORY inclusive end. HISTORY requires a same-month start and end.
-        sourceCodes:
-          $ref: '#/components/schemas/StringOrStringArray'
-        sourceGroups:
-          $ref: '#/components/schemas/StringOrStringArray'
-        provinces:
-          $ref: '#/components/schemas/StringOrStringArray'
-        cities:
-          $ref: '#/components/schemas/StringOrStringArray'
-        recordFamilies:
-          $ref: '#/components/schemas/StringOrStringArray'
-        originalTypes:
-          $ref: '#/components/schemas/StringOrStringArray'
-        lifecycleStages:
-          $ref: '#/components/schemas/StringOrStringArray'
-        outcomeStatuses:
-          $ref: '#/components/schemas/StringOrStringArray'
-        procurementMethods:
-          $ref: '#/components/schemas/StringOrStringArray'
-        transactionMethods:
-          $ref: '#/components/schemas/StringOrStringArray'
-        limit:
-          type:
-            - integer
-            - 'null'
-          minimum: 0
-          maximum: 2147483647
-          description: REALTIME null/0 means unlimited. TODAY/HISTORY null/0 defaults to 500 and concrete values cannot exceed 500.
-        offset:
-          type:
-            - integer
-            - 'null'
-          minimum: 0
-          default: 0
-        distinct:
-          type:
-            - boolean
-            - 'null'
-          default: false
-          description: Deduplicate by normalized title before pagination.
-    ProcurementSearchResponse:
-      type: object
-      required: [code, message, data]
-      properties:
-        code:
-          type: integer
-        message:
-          type: string
-        data:
-          oneOf:
-            - $ref: '#/components/schemas/ProcurementSearchData'
-            - type: 'null'
-    ProcurementSearchData:
-      type: object
-      required: [query, summary, sourceStatuses, items]
-      properties:
-        query:
-          $ref: '#/components/schemas/ProcurementSearchQuery'
-        summary:
-          $ref: '#/components/schemas/ProcurementSearchSummary'
-        sourceStatuses:
-          type: array
-          description: Current collection/cache health even when mode is TODAY or HISTORY.
-          items:
-            $ref: '#/components/schemas/ProcurementSourceStatus'
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/ProcurementNotice'
-    ProcurementSearchSummary:
-      type: object
-      properties:
-        total:
-          type: integer
-          description: Complete filtered count after optional title deduplication, before pagination.
-        rawTotal:
-          type: integer
-          description: Complete filtered count before title deduplication.
-        returned:
-          type: integer
-        limit:
-          type: [integer, 'null']
-        offset:
-          type: integer
-        duplicatesRemoved:
-          type: integer
-        hasMore:
-          type: boolean
-        truncated:
-          type: boolean
-          description: Compatibility field with the same meaning as hasMore.
-        todaySourceCount:
-          type: integer
-          description: Number of current sources whose latest retained notice date is today.
-        latestAvailableSourceCount:
-          type: integer
-          description: Number of sources successfully collected today but displaying the latest available older publication date.
-        staleCacheSourceCount:
-          type: integer
-          description: Number of sources whose retained data has not been successfully refreshed today.
-        emptySourceCount:
-          type: integer
-          description: Number of current sources without any retained valid notice.
-    ProcurementSearchQuery:
+    HotSearchRequest:
       type: object
       properties:
         mode:
-          $ref: '#/components/schemas/SkillSearchMode'
+          type: string
+          enum: [REALTIME, TODAY, HISTORY]
         keywords:
           type: array
           items: { type: string }
-        permission:
-          type: string
-          enum: [SEARCH, SKILLHISTORY]
-        limit:
-          type: [integer, 'null']
-        offset:
-          type: integer
-        distinct:
-          type: boolean
-        startTime:
-          type: [string, 'null']
-        endTime:
-          type: [string, 'null']
-        sourceCodes:
-          $ref: '#/components/schemas/StringOrStringArray'
-        sourceGroups:
-          $ref: '#/components/schemas/StringOrStringArray'
-        provinces:
-          $ref: '#/components/schemas/StringOrStringArray'
-        cities:
-          $ref: '#/components/schemas/StringOrStringArray'
-        recordFamilies:
-          $ref: '#/components/schemas/StringOrStringArray'
-        originalTypes:
-          $ref: '#/components/schemas/StringOrStringArray'
-        lifecycleStages:
-          $ref: '#/components/schemas/StringOrStringArray'
-        outcomeStatuses:
-          $ref: '#/components/schemas/StringOrStringArray'
-        procurementMethods:
-          $ref: '#/components/schemas/StringOrStringArray'
-        transactionMethods:
-          $ref: '#/components/schemas/StringOrStringArray'
-    ProcurementSourceStatus:
+        rootCategories:
+          type: array
+          items: { type: string }
+        startTime: { type: string, nullable: true }
+        endTime: { type: string, nullable: true }
+        limit: { type: integer, minimum: 1, maximum: 500, default: 500 }
+        offset: { type: integer, minimum: 0, maximum: 5000, default: 0 }
+        distinct: { type: boolean, default: false }
+      required: [mode]
+    ProcurementSearchRequest:
       type: object
       properties:
-        sourceCode:
+        mode:
           type: string
-        source:
+          enum: [REALTIME, TODAY, HISTORY]
+        keywords: { type: array, items: { type: string } }
+        sourceCodes: { type: array, items: { type: string } }
+        sourceGroups: { type: array, items: { type: string } }
+        recordFamilies: { type: array, items: { type: string } }
+        regions: { type: array, items: { type: string } }
+        provinces: { type: array, items: { type: string } }
+        cities: { type: array, items: { type: string } }
+        rawTypes: { type: array, items: { type: string } }
+        projectNumber: { type: string, nullable: true }
+        purchaser: { type: string, nullable: true }
+        agency: { type: string, nullable: true }
+        startTime: { type: string, nullable: true }
+        endTime: { type: string, nullable: true }
+        publishedFrom: { type: string, nullable: true }
+        publishedTo: { type: string, nullable: true }
+        deadlineFrom: { type: string, nullable: true }
+        deadlineTo: { type: string, nullable: true }
+        amountMin: { type: number, nullable: true }
+        amountMax: { type: number, nullable: true }
+        sort:
           type: string
-        sourceGroup:
-          type: string
-        collectionStatus:
-          type: string
-          enum: [HAS_DATA, NO_DATA]
-          description: NO_DATA means collection succeeded with no notice today; it is not a collection failure.
-        dataScope:
-          type: string
-          enum: [TODAY, LATEST_AVAILABLE, STALE_CACHE, '']
-          description: Source-level freshness. Different sources in one response may use different values.
-        latestPublicationDate:
-          type: string
-          description: Maximum real publication date among retained notices, formatted yyyy-MM-dd; empty when no valid notice exists.
-        fallbackToLatest:
-          type: boolean
-          description: true when today's collection was empty and REALTIME displays the latest available older publication date.
-        lastCollectionTime:
-          type: string
-        dataUpdateTime:
-          type: string
-          description: Effective notice-cache generation time; may be older than lastCollectionTime after NO_DATA.
-        dataCount:
-          type: integer
-          description: Retained valid notice count. It may be non-zero when collectionStatus is NO_DATA.
-    ProcurementNotice:
+          enum: [PUBLISHED_AT_DESC, PUBLISHED_AT_ASC, DEADLINE_ASC, DEADLINE_DESC, AMOUNT_DESC, AMOUNT_ASC]
+        limit: { type: integer, minimum: 1, maximum: 500, default: 100 }
+        offset: { type: integer, minimum: 0, maximum: 5000, default: 0 }
+        distinct: { type: boolean, default: false }
+      required: [mode]
+    CandySearchRequest:
       type: object
-      additionalProperties: false
+      properties:
+        keywords: { type: array, items: { type: string } }
+        categories: { type: array, items: { type: string } }
+        limit: { type: integer, minimum: 1, maximum: 500, default: 500 }
+        offset: { type: integer, minimum: 0, maximum: 5000, default: 0 }
+        distinct: { type: boolean, default: false }
+    DailySearchRequest:
+      type: object
+      properties:
+        date: { type: string, nullable: true }
+        category: { type: string, nullable: true }
+        startDate: { type: string, nullable: true }
+        endDate: { type: string, nullable: true }
+        limit: { type: integer, minimum: 1, maximum: 50, default: 20 }
+        offset: { type: integer, minimum: 0, maximum: 5000, default: 0 }
+        withContent: { type: boolean, default: false }
+    HotSearchResponse:
+      type: object
+      properties:
+        requestId: { type: string }
+        data:
+          type: object
+          properties:
+            query: { type: object }
+            summary: { $ref: '#/components/schemas/Summary' }
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/HotItem' }
+    HotItem:
+      type: object
       properties:
         id: { type: string }
         title: { type: string }
-        url: { type: string, format: uri }
-        source: { type: string }
-        sourceCode: { type: string }
-        sourceGroup: { type: string }
-        sourceLevel: { type: string }
-        sourceChannel: { type: string }
-        originalCategory: { type: string }
-        originalType: { type: string }
-        originalTypeCode: { type: string }
-        recordFamily: { type: string }
-        domains:
-          type: array
-          items: { type: string }
-        industries:
-          type: array
-          items: { type: string }
-        subjectTypes:
-          type: array
-          items: { type: string }
-        procurementMethods:
-          type: array
-          items: { type: string }
-        transactionMethods:
-          type: array
-          items: { type: string }
-        procurementChannels:
-          type: array
-          items: { type: string }
-        lifecycleStage: { type: string }
-        noticeActions:
-          type: array
-          items: { type: string }
-        outcomeStatus: { type: string }
-        specialTopics:
-          type: array
-          items: { type: string }
-        region: { type: string }
-        province: { type: string }
-        city: { type: string }
-        district: { type: string }
-        projectNumber: { type: string }
-        purchaser: { type: string }
-        agency: { type: string }
-        organization: { type: string }
-        amount:
-          type:
-            - number
-            - 'null'
-        currency: { type: string }
-        publishedAt:
-          type:
-            - string
-            - 'null'
-        deadlineAt:
-          type:
-            - string
-            - 'null'
-        searchText: { type: string }
-        sourceAttributes:
+        url: { type: string, nullable: true }
+        source: { type: string, nullable: true }
+        platformId: { type: string, nullable: true }
+        channelId: { type: string, nullable: true }
+        category: { type: string, nullable: true }
+        rootCategory: { type: string, nullable: true }
+        rank: { type: integer, nullable: true }
+        hotScore: { type: string, nullable: true }
+        publishedAt: { type: string, nullable: true }
+        observedAt: { type: string, nullable: true }
+    ProcurementSearchResponse:
+      type: object
+      properties:
+        requestId: { type: string }
+        data:
           type: object
-          additionalProperties:
-            type: string
-    TgmengIndexRequest:
+          properties:
+            query: { type: object }
+            summary: { $ref: '#/components/schemas/Summary' }
+            sourceStatuses:
+              type: array
+              items: { $ref: '#/components/schemas/SourceStatus' }
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/ProcurementItem' }
+    ProcurementItem:
       type: object
-      additionalProperties: true
-      required:
-        - license
       properties:
-        license:
-          type: string
-          minLength: 1
-          description: Tgmeng universal license code (糖果梦通用密钥). Must not be logged or exposed.
-        keywords:
-          oneOf:
-            - type: array
-              items:
-                type: string
-            - type: string
-            - type: 'null'
-          description: |
-            Optional keyword filter for hotspot titles. Empty or omitted means no title filtering.
-            Array items use OR matching. Inside one item, +, ＋, &, ＆ mean required include; -, －, !, ！ mean exclude.
-            Examples: 黄金+伊朗, 黄金-伊朗, 伊朗+导弹-足球.
-        categories:
-          oneOf:
-            - type: array
-              items:
-                type: string
-            - type: string
-            - type: 'null'
-          description: Optional Tgmeng Index category filter. Empty or omitted means all Tgmeng Index categories. Supported canonical values include all, dubang, alltalk, technology, finance, entertainment, car, sports, game, livelihood, ai, sideline, education. Common Chinese aliases such as 综合, 毒榜, 争议榜, 科技, 财经, 娱乐, 汽车, 体育, 游戏, 民生, AI, 副业, 教育 are accepted. The API also accepts request field aliases category, type, platformCategory, and 分类.
-        limit:
-          type:
-            - integer
-            - 'null'
-          minimum: 0
-          maximum: 2147483647
-          description: Maximum number of returned items. null means no limit by default. Agents must not set this field to a concrete number unless the user explicitly requested a count or confirmed a limit.
-        offset:
-          type:
-            - integer
-            - 'null'
-          minimum: 0
-          maximum: 2147483647
-          default: 0
-          description: Result offset. Default is 0. Use with a user-approved limit to fetch later pages. The next page offset is always current offset plus data.summary.returned; for example, after limit 100 and offset 0 returns 100 items, request offset 100 next.
-        distinct:
-          type:
-            - boolean
-            - 'null'
-          default: false
-          description: Whether to deduplicate by normalized title. Default is false. When true, deduplication runs after keyword/category filters and before pagination, keeps the first item in existing sort order, and does not use simHash.
-    SkillSearchResponse:
+        id: { type: string }
+        title: { type: string }
+        url: { type: string, nullable: true }
+        source: { type: string, nullable: true }
+        sourceCode: { type: string, nullable: true }
+        sourceGroup: { type: string, nullable: true }
+        recordFamily: { type: string, nullable: true }
+        originalType: { type: string, nullable: true }
+        region: { type: string, nullable: true }
+        province: { type: string, nullable: true }
+        city: { type: string, nullable: true }
+        projectNumber: { type: string, nullable: true }
+        purchaser: { type: string, nullable: true }
+        agency: { type: string, nullable: true }
+        amount: { type: string, nullable: true }
+        currency: { type: string, nullable: true }
+        publishedAt: { type: string, nullable: true }
+        deadlineAt: { type: string, nullable: true }
+        observedAt: { type: string, nullable: true }
+        sourceAttributes: { type: object }
+    SourceStatus:
       type: object
-      required:
-        - code
-        - message
-        - data
       properties:
-        code:
-          type: integer
-          description: Business status code. 200 means success.
-        message:
-          type: string
-          description: Human-readable result or error message.
+        sourceCode: { type: string, nullable: true }
+        collectionStatus: { type: string, nullable: true }
+        dataScope: { type: string, nullable: true }
+        latestPublicationDate: { type: string, nullable: true }
+        dataCount: { type: integer }
+        dataUpdateTime: { type: string, nullable: true }
+        lastCollectionTime: { type: string, nullable: true }
+    CandySearchResponse:
+      type: object
+      properties:
+        requestId: { type: string }
         data:
-          oneOf:
-            - $ref: '#/components/schemas/SkillSearchData'
-            - type: 'null'
-    SkillSearchData:
-      type: object
-      required:
-        - query
-        - summary
-        - items
-      properties:
-        query:
-          $ref: '#/components/schemas/SkillSearchQuery'
-        summary:
-          $ref: '#/components/schemas/SkillSearchSummary'
-        items:
-          type: array
-          description: Items are ordered by update time from newest to oldest, not by hotspot popularity weight.
-          items:
-            $ref: '#/components/schemas/SkillSearchItem'
-    SkillSearchQuery:
+          type: object
+          properties:
+            query: { type: object }
+            summary: { $ref: '#/components/schemas/Summary' }
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/CandyItem' }
+    CandyItem:
       type: object
       properties:
-        mode:
-          $ref: '#/components/schemas/SkillSearchMode'
-        keywords:
-          type: array
-          items:
-            type: string
-        permission:
-          type: string
-          enum:
-            - SEARCH
-            - SKILLHISTORY
-        limit:
-          type:
-            - integer
-            - 'null'
-        offset:
-          type: integer
-          description: Requested result offset.
-        distinct:
-          type: boolean
-          description: Whether title deduplication was enabled.
-        startTime:
-          type:
-            - string
-            - 'null'
-          description: Normalized time window start used by the query, or null.
-        endTime:
-          type:
-            - string
-            - 'null'
-          description: Normalized time window end used by the query, or null.
-        rootCategories:
-          type:
-            - array
-            - 'null'
-          items:
-            type: string
-          description: Root category filters used by the query, or null.
-    SkillSearchSummary:
+        id: { type: string }
+        title: { type: string }
+        source: { type: string }
+        category: { type: string, nullable: true }
+        rootCategory: { type: string }
+        hotScore: { type: string, nullable: true }
+        publishedAt: { type: string, nullable: true }
+    DailySearchResponse:
       type: object
       properties:
-        total:
-          type: integer
-          description: For REALTIME, matched item count after optional title deduplication and before pagination. For raw TODAY/HISTORY, current page returned count.
-        rawTotal:
-          type: integer
-          description: For REALTIME, matched item count before optional title deduplication. For raw TODAY/HISTORY, current page returned count.
-        returned:
-          type: integer
-          description: Number of items returned after offset and limit are applied.
-        limit:
-          type:
-            - integer
-            - 'null'
-          description: Requested limit. For REALTIME, null or 0 means no client-side count limit; for raw TODAY/HISTORY, maximum 500.
-        offset:
-          type: integer
-          description: Requested result offset.
-        duplicatesRemoved:
-          type: integer
-          description: Number of items removed by title deduplication. Zero when distinct is false.
-        hasMore:
-          type: boolean
-          description: true when more matched items remain after this response.
-        truncated:
-          type: boolean
-          description: Compatibility field with the same meaning as hasMore.
-    SkillSearchItem:
-      type: object
-      additionalProperties: true
-      properties:
-        title:
-          type:
-            - string
-            - 'null'
-          description: Hotspot or news title.
-        url:
-          type:
-            - string
-            - 'null'
-          description: Source URL when available.
-        source:
-          type:
-            - string
-            - 'null'
-          description: Source platform name.
-        category:
-          type:
-            - string
-            - 'null'
-          description: Platform category.
-        rootCategory:
-          type:
-            - string
-            - 'null'
-          description: Root platform category.
-        publishedAt:
-          type:
-            - string
-            - 'null'
-          description: Data update time in yyyy-MM-dd HH:mm:ss when available.
-        rank:
-          type:
-            - integer
-            - 'null'
-          description: Source ranking order when available.
-        simHash:
-          type:
-            - integer
-            - 'null'
-          format: int64
-          description: Similarity hash used by historical data when available.
-    TgmengIndexResponse:
-      type: object
-      required:
-        - code
-        - message
-        - data
-      properties:
-        code:
-          type: integer
-          description: Business status code. 200 means success.
-        message:
-          type: string
-          description: Human-readable result or error message.
+        requestId: { type: string }
         data:
-          oneOf:
-            - $ref: '#/components/schemas/TgmengIndexData'
-            - type: 'null'
-    TgmengIndexData:
-      type: object
-      required:
-        - query
-        - summary
-        - items
-      properties:
-        query:
-          $ref: '#/components/schemas/TgmengIndexQuery'
-        summary:
-          $ref: '#/components/schemas/TgmengIndexSummary'
-        items:
-          type: array
-          items:
-            $ref: '#/components/schemas/TgmengIndexItem'
-    TgmengIndexQuery:
+          type: object
+          properties:
+            query: { type: object }
+            summary: { $ref: '#/components/schemas/Summary' }
+            items:
+              type: array
+              items: { $ref: '#/components/schemas/DailyItem' }
+    DailyItem:
       type: object
       properties:
-        mode:
-          type: string
-          enum:
-            - INDEX
-        keywords:
-          type: array
-          items:
-            type: string
-        permission:
-          type: string
-          enum:
-            - SEARCH
-        limit:
-          type:
-            - integer
-            - 'null'
-        offset:
-          type: integer
-          description: Requested result offset.
-        distinct:
-          type: boolean
-          description: Whether title deduplication was enabled.
-        categories:
-          type: array
-          items:
-            type: string
-    TgmengIndexSummary:
+        id: { type: integer }
+        title: { type: string }
+        summary: { type: string, nullable: true }
+        category: { type: string, nullable: true }
+        categoryName: { type: string, nullable: true }
+        reportDate: { type: string, nullable: true }
+        coverImageUrl: { type: string, nullable: true }
+        tags: { type: array, items: { type: string } }
+        aiPlatforms: { type: string, nullable: true }
+        aiModels: { type: string, nullable: true }
+        aiFroms: { type: string, nullable: true }
+        totalTokens: { type: integer }
+        hotCount: { type: integer }
+        generatedAt: { type: string, nullable: true }
+        readMinutes: { type: integer }
+        contentMarkdown: { type: string, nullable: true }
+    Summary:
       type: object
       properties:
-        total:
-          type: integer
-          description: Matched item count after optional title deduplication and before pagination.
-        rawTotal:
-          type: integer
-          description: Matched item count before optional title deduplication.
-        returned:
-          type: integer
-          description: Number of items returned after offset and limit are applied.
-        limit:
-          type:
-            - integer
-            - 'null'
-          description: Requested limit. null or 0 means no limit.
-        offset:
-          type: integer
-          description: Requested result offset.
-        duplicatesRemoved:
-          type: integer
-          description: Number of items removed by title deduplication. Zero when distinct is false.
-        hasMore:
-          type: boolean
-          description: true when more matched items remain after this response.
-        truncated:
-          type: boolean
-          description: Compatibility field with the same meaning as hasMore.
-    TgmengIndexItem:
-      type: object
-      additionalProperties: true
-      properties:
-        title:
-          type:
-            - string
-            - 'null'
-          description: Hotspot title.
-        source:
-          type:
-            - string
-            - 'null'
-          description: Usually 糖果指数.
-        category:
-          type:
-            - string
-            - 'null'
-          description: Tgmeng Index category name.
-        rootCategory:
-          type:
-            - string
-            - 'null'
-          description: Root category, usually 糖果梦.
-        publishedAt:
-          type:
-            - string
-            - 'null'
-          description: Index list update time in yyyy-MM-dd HH:mm:ss when available.
-        hotScore:
-          type:
-            - integer
-            - 'null'
-          description: Tgmeng Index heat value. Larger values mean higher heat.
-    DailyNewsRequest:
-      type: object
-      additionalProperties: true
-      required:
-        - license
-      properties:
-        license:
-          type: string
-          minLength: 1
-          description: Tgmeng universal license code (糖果梦通用密钥). Must not be logged or exposed.
-        date:
-          type:
-            - string
-            - 'null'
-          format: date
-          description: Exact report date in yyyy-MM-dd. When provided, it takes precedence over startDate and endDate.
-        startDate:
-          type:
-            - string
-            - 'null'
-          format: date
-          description: Inclusive report-date range start in yyyy-MM-dd. Used only when date is absent.
-        endDate:
-          type:
-            - string
-            - 'null'
-          format: date
-          description: Inclusive report-date range end in yyyy-MM-dd. Used only when date is absent.
-        category:
-          type:
-            - string
-            - 'null'
-          description: Daily report category value. Empty or all means all categories. Known values include all, news, wool, media, tv, life, community, finance, stock, sports, technology, design, audiovideo, game, health, education, futures, ai, sideline.
-        limit:
-          type:
-            - integer
-            - 'null'
-          minimum: 0
-          maximum: 50
-          description: Maximum number of returned reports. null means no limit by default. Agents must not set this field to a concrete number unless the user explicitly requested a count or confirmed a limit.
-        offset:
-          type:
-            - integer
-            - 'null'
-          minimum: 0
-          maximum: 2147483647
-          default: 0
-          description: Result offset. Default is 0. Use with a user-approved limit to fetch later pages. The next page offset is always current offset plus data.summary.returned.
-        withContent:
-          type:
-            - boolean
-            - 'null'
-          default: true
-          description: Whether to include items[].contentMarkdown. Use true for report body, Markdown, article content, export, download, or learning material. Use false for report lists or metadata.
-    DailyNewsResponse:
-      type: object
-      required:
-        - code
-        - message
-        - data
-      properties:
-        code:
-          type: integer
-          description: Business status code. 200 means success.
-        message:
-          type: string
-          description: Human-readable result or error message.
-        data:
-          oneOf:
-            - $ref: '#/components/schemas/DailyNewsData'
-            - type: 'null'
-    DailyNewsData:
-      type: object
-      required:
-        - query
-        - summary
-        - items
-      properties:
-        query:
-          $ref: '#/components/schemas/DailyNewsQuery'
-        summary:
-          $ref: '#/components/schemas/DailyNewsSummary'
-        items:
-          type: array
-          description: Reports are ordered by report date from newest to oldest, then by id from newest to oldest.
-          items:
-            $ref: '#/components/schemas/DailyNewsItem'
-    DailyNewsQuery:
+        total: { type: integer }
+        returned: { type: integer }
+        limit: { type: integer }
+        offset: { type: integer }
+        hasMore: { type: boolean }
+        duplicatesRemoved: { type: integer }
+    ErrorResponse:
       type: object
       properties:
-        mode:
-          type: string
-          enum:
-            - DAILY_NEWS
-        permission:
-          type: string
-          enum:
-            - SEARCH
-        category:
-          type:
-            - string
-            - 'null'
-        date:
-          type:
-            - string
-            - 'null'
-          format: date
-        startDate:
-          type:
-            - string
-            - 'null'
-          format: date
-        endDate:
-          type:
-            - string
-            - 'null'
-          format: date
-        limit:
-          type:
-            - integer
-            - 'null'
-        offset:
-          type: integer
-          description: Requested result offset.
-        withContent:
-          type: boolean
-          description: Whether Markdown content was requested.
-    DailyNewsSummary:
-      type: object
-      properties:
-        total:
-          type: integer
-          description: Matched report count before pagination.
-        returned:
-          type: integer
-          description: Returned report count after offset and limit are applied.
-        limit:
-          type:
-            - integer
-            - 'null'
-          description: Requested limit. null or 0 means no limit, but concrete values are capped by the Daily News maximum of 50.
-        offset:
-          type: integer
-          description: Requested result offset.
-        hasMore:
-          type: boolean
-          description: true when more matched reports remain after this response.
-        truncated:
-          type: boolean
-          description: Compatibility field with the same meaning as hasMore.
-    DailyNewsItem:
-      type: object
-      additionalProperties: true
-      properties:
-        id:
-          type: integer
-          format: int64
-          description: Report id.
-        title:
-          type:
-            - string
-            - 'null'
-          description: Daily report title.
-        summary:
-          type:
-            - string
-            - 'null'
-          description: Daily report summary.
-        category:
-          type:
-            - string
-            - 'null'
-          description: Daily report category value.
-        categoryName:
-          type:
-            - string
-            - 'null'
-          description: Daily report category display name.
-        reportDate:
-          type:
-            - string
-            - 'null'
-          format: date
-          description: Report date in yyyy-MM-dd.
-        coverImageUrl:
-          type:
-            - string
-            - 'null'
-          description: Cover image URL when available.
-        tags:
-          type: array
-          items:
-            type: string
-          description: Report tags.
-        aiPlatforms:
-          type:
-            - string
-            - 'null'
-          description: AI platform information used during report generation.
-        aiModels:
-          type:
-            - string
-            - 'null'
-          description: AI model information used during report generation.
-        aiFroms:
-          type:
-            - string
-            - 'null'
-          description: AI request source or provider information.
-        requestTypes:
-          type:
-            - string
-            - 'null'
-          description: Request type information recorded during report generation.
-        totalTokens:
-          type:
-            - integer
-            - 'null'
-          format: int64
-          description: Total token usage recorded for report generation.
-        hotCount:
-          type:
-            - integer
-            - 'null'
-          description: Number of hotspots included in report generation.
-        inputCount:
-          type:
-            - integer
-            - 'null'
-          description: Number of input records used by the report-generation process.
-        batchCount:
-          type:
-            - integer
-            - 'null'
-          description: Batch count used by the report-generation process.
-        aiUsedTimeSeconds:
-          type:
-            - integer
-            - 'null'
-          format: int64
-          description: AI processing time in seconds.
-        durationMs:
-          type:
-            - integer
-            - 'null'
-          format: int64
-          description: Total report-generation task duration in milliseconds.
-        contentMarkdown:
-          type:
-            - string
-            - 'null'
-          description: Report body Markdown. Null when withContent is false.
-    ImageUploadRequest:
-      type: object
-      additionalProperties: true
-      description: Multipart upload body. Include at least one supported file field. Preferred fields are file for single upload and repeated files[] for batch upload.
-      properties:
-        file:
-          type: string
-          format: binary
-          description: Preferred single-file upload field.
-        'files[]':
-          type: array
-          description: Preferred repeated batch upload field.
-          items:
-            type: string
-            format: binary
-        image:
-          type: string
-          format: binary
-          description: Compatible single-file alias.
-        smfile:
-          type: string
-          format: binary
-          description: Compatible PicGo/SM.MS-style single-file alias.
-        source:
-          type: string
-          format: binary
-          description: Compatible single-file alias.
-        files:
-          type: array
-          description: Compatible batch alias.
-          items:
-            type: string
-            format: binary
-        upload:
-          type: string
-          format: binary
-          description: Compatible single-file alias.
-        media:
-          type: string
-          format: binary
-          description: Compatible single-file alias.
-        uploadFolder:
-          type:
-            - string
-            - 'null'
-          description: Optional target folder/path label. Aliases include folder, dir, directory, and path.
-        folder:
-          type:
-            - string
-            - 'null'
-          description: Alias for uploadFolder.
-        dir:
-          type:
-            - string
-            - 'null'
-          description: Alias for uploadFolder.
-        directory:
-          type:
-            - string
-            - 'null'
-          description: Alias for uploadFolder.
-        path:
-          type:
-            - string
-            - 'null'
-          description: Alias for uploadFolder.
-        uploadNameType:
-          type:
-            - string
-            - 'null'
-          enum:
-            - default
-            - index
-            - origin
-            - short
-            - null
-          description: Optional naming strategy.
-        serverCompress:
-          type:
-            - string
-            - boolean
-            - 'null'
-          description: Boolean-compatible value. Use "false" to disable Telegram server compression.
-        autoRetry:
-          type:
-            - string
-            - boolean
-            - 'null'
-          description: Boolean-compatible value. Use "false" to disable automatic retry.
-    ImageUploadResponse:
-      type: object
-      additionalProperties: true
-      required:
-        - success
-        - message
-      properties:
-        success:
-          type: boolean
-          description: Whether all uploaded files succeeded.
-        partial:
-          type:
-            - boolean
-            - 'null'
-          description: true when some files succeeded and some failed.
-        code:
-          type:
-            - string
-            - 'null'
-          description: Machine-readable status such as success, unauthorized, no_file, or upload_failed.
-        message:
-          type: string
-          description: Human-readable result or error message.
-        url:
-          type:
-            - string
-            - 'null'
-          format: uri
-          description: First successful file URL, PicGo-compatible.
-        data:
-          oneOf:
-            - $ref: '#/components/schemas/ImageUploadData'
-            - type: 'null'
-        files:
-          type: array
-          description: Per-file upload result list.
-          items:
-            $ref: '#/components/schemas/ImageUploadFileResult'
-    ImageUploadData:
-      type: object
-      additionalProperties: true
-      properties:
-        url:
-          type:
-            - string
-            - 'null'
-          format: uri
-          description: First successful file URL.
-        urls:
-          type: array
-          description: All successful uploaded file URLs.
-          items:
-            type: string
-            format: uri
-        markdown:
-          type:
-            - string
-            - 'null'
-          description: Markdown for the first successful uploaded file.
-        html:
-          type:
-            - string
-            - 'null'
-          description: HTML img tag for the first successful uploaded file.
-    ImageUploadFileResult:
-      type: object
-      additionalProperties: true
-      properties:
-        success:
-          type: boolean
-          description: Whether this file uploaded successfully.
-        name:
-          type:
-            - string
-            - 'null'
-          description: Original file name when available.
-        size:
-          type:
-            - integer
-            - 'null'
-          format: int64
-          description: File size in bytes.
-        id:
-          type:
-            - string
-            - 'null'
-          description: Stored file id/path segment.
-        url:
-          type:
-            - string
-            - 'null'
-          format: uri
-          description: Public file URL when upload succeeds.
-        markdown:
-          type:
-            - string
-            - 'null'
-          description: Markdown image link when upload succeeds.
-        message:
-          type:
-            - string
-            - 'null'
-          description: Per-file error or status message.
+        requestId: { type: string }
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }

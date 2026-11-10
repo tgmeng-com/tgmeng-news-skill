@@ -1,6 +1,6 @@
 interface:
-  display_name: "Tgmeng Hotspot, Procurement and Open APIs"
-  short_description: "Search hotspots, procurement notices, index/daily data, and upload images/files"
-  default_prompt: "Use $tgmeng-news-skill to search Tgmeng hotspot data, structured procurement/tender notices, Tgmeng Index data, generated daily reports, or upload images/files. Use /api/skill/search for news/hotspots and /api/skill/procurement/search for bidding, government procurement, public-resource trading, purchaser, agency, project number, or award-result requests. These search APIs reuse permissions and quota but have separate response contracts. Use limit null by default; TODAY/HISTORY default/max to 500 and HISTORY must remain in one calendar month. Procurement REALTIME returns each source's latest available data; read sourceStatuses[].dataScope/latestPublicationDate, never describe fallback data as today's. TODAY/HISTORY remain strict time filters. Treat procurement NO_DATA as a successful collection with no notice today, not a failure. For image upload, require a stable X-Machine-Id and never expose the full license."
+  display_name: "Tgmeng Open API Skill"
+  short_description: "Search hotspots, procurement notices, Tgmeng Index and daily reports"
+  default_prompt: "Use $tgmeng-news-skill to query Tgmeng hotspot/news data, structured procurement and tender notices, Tgmeng Index rankings, or generated daily reports through the Tgmeng Open Platform. Use POST /v1/hot/search for hotspots, /v1/procurement/search for procurement, /v1/candy/search for Tgmeng Index, and /v1/daily/search for daily reports. Authenticate with Authorization: Bearer tgm_open_... from account.tgmeng.com/developer. Never use a legacy license field, never log the API key, and do not call the removed image upload service."
 policy:
   allow_implicit_invocation: true

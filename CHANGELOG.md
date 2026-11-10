@@ -4,6 +4,21 @@
 
 格式参考 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/)，版本号遵循语义化版本。
 
+## [3.0.0] - 2026-11-10
+
+### Changed
+
+- 全部接口迁移到新开放平台：`/v1/hot/search`、`/v1/procurement/search`、`/v1/candy/search`、`/v1/daily/search`。
+- 鉴权从 Legacy License Code 改为站内通用 API Key，使用 `Authorization: Bearer tgm_open_...`。
+- 请求体不再接受 `license` 字段；API Key 在 `https://account.tgmeng.com/developer` 获取和重置。
+- 响应统一为 `{requestId, data:{query, summary, items}}`，错误统一为 `{requestId, error:{code, message}}`。
+- 增加开放平台限流响应头和 401/403/429 错误说明。
+
+### Removed
+
+- 移除图床上传能力和 `image.tgmeng.com` 相关文档、示例与错误码。
+- 移除旧 `/api/skill/*` 接口和 License 权限说明。
+
 ## [2.3.1] - 2026-08-10
 
 ### Changed
